@@ -1,6 +1,5 @@
 "use client"
 
-import { signIn } from "next-auth/react"
 import { useState, useEffect } from "react"
 import toast from "react-hot-toast"
 
@@ -11,20 +10,13 @@ export default function LoginPage() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
-    if (params.get("error") === "CredentialsSignin") {
+    if (params.get("error")) {
       toast.error("Email o contraseña incorrectos")
     }
   }, [])
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSubmit = (e: React.FormEvent) => {
     setLoading(true)
-
-    await signIn("credentials", {
-      email,
-      password,
-      callbackUrl: "/",
-    })
   }
 
   return (
@@ -45,13 +37,14 @@ export default function LoginPage() {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form action="/api/login" method="POST" onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-text dark:text-dark-text mb-1.5">
                 Email
               </label>
               <input
                 type="email"
+                name="email"
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -67,6 +60,7 @@ export default function LoginPage() {
               </label>
                 <input
                   type="password"
+                  name="password"
                   autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
