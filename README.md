@@ -14,7 +14,9 @@
     *   **ADMIN:** Gestión total (incluyendo usuarios y roles).
     *   **GERENTE:** Gestión de catálogo (CRUD productos, categorías, proveedores) y ajustes de inventario.
     *   **EMPLEADO:** Facturación y venta en tiempo real (POS), visualización limitada.
-*   **🏬 Punto de Venta (POS):** Carrito interactivo reactivo desarrollado con **Zustand** para añadir artículos, validar existencias de stock y registrar transacciones.
+*   **🏬 Punto de Venta (POS):** Interfaz visual tipo tienda online con tarjetas de producto, placeholders de color, filtro por categorías y búsqueda instantánea cliente-side. Carrito interactivo reactivo con **Zustand** para añadir artículos, validar existencias y registrar transacciones.
+*   **💳 Métodos de Pago:** Soporte para Efectivo y Tarjeta en cada venta, con badge visible en el ticket impreso y columna dedicada en el historial de ventas.
+*   **📊 Reportes por Empleado:** Filtro en la página de reportes para visualizar métricas y gráficos filtrados por vendedor.
 *   **📊 Dashboard & Analíticas:** Métricas consolidadas (Total ventas, valoración del inventario, productos de bajo stock) y visualizaciones dinámicas interactivas utilizando **Recharts**.
 *   **🔄 Concurrencia Robusta & Bloqueo Transaccional:**
     *   Control de concurrencia optimista con campo `version` en productos y categorías.
@@ -101,11 +103,11 @@ Al correr el script de seed, se crearán las siguientes cuentas listas para usar
 | **GET** | `/api/suppliers` | `EMPLEADO` | Listar proveedores activos |
 | **POST** | `/api/suppliers` | `GERENTE` | Crear proveedor |
 | **GET** | `/api/sales` | `EMPLEADO` | Historial de ventas general |
-| **POST** | `/api/sales` | `EMPLEADO` | Procesar una venta (ajuste transaccional de stock) |
+| **POST** | `/api/sales` | `EMPLEADO` | Procesar una venta con método de pago, cliente opcional (ajuste transaccional de stock) |
 | **GET** | `/api/stock` | `EMPLEADO` | Consultar movimientos históricos |
 | **POST** | `/api/stock` | `GERENTE` | Realizar ajuste manual de inventario |
 | **GET** | `/api/reports/dashboard` | `EMPLEADO` | Datos estadísticos para widgets del dashboard |
-| **GET** | `/api/reports` | `GERENTE` | Datos consolidados para gráficos |
+| **GET** | `/api/reports` | `GERENTE` | Datos consolidados para gráficos (filtrable por userId y días) |
 | **GET** | `/api/users` | `ADMIN` | Listar usuarios |
 | **POST** | `/api/users` | `ADMIN` | Crear nuevo usuario |
 
