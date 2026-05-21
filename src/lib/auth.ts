@@ -4,6 +4,17 @@ import { compare } from "bcryptjs"
 import { prisma } from "./prisma"
 
 export const authConfig: NextAuthConfig = {
+  cookies: {
+    sessionToken: {
+      name: "next-auth.session-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: true,
+      },
+    },
+  },
   providers: [
     Credentials({
       name: "credentials",
