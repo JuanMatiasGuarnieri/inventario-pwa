@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import toast from "react-hot-toast"
@@ -33,6 +33,14 @@ export default function ClienteDetailPage() {
   const { data: session } = useSession()
   const [customer, setCustomer] = useState<CustomerDetail | null>(null)
   const [loading, setLoading] = useState(true)
+  const [editOpen, setEditOpen] = useState(false)
+  const [editName, setEditName] = useState("")
+  const [editDni, setEditDni] = useState("")
+  const [editEmail, setEditEmail] = useState("")
+  const [editPhone, setEditPhone] = useState("")
+  const [saving, setSaving] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     if (session?.user?.role === "EMPLEADO") {
@@ -41,10 +49,11 @@ export default function ClienteDetailPage() {
     }
   }, [session, router])
 
-  useEffect(() => {
+  const loadCustomer = useCallback(async () => {
     const id = Array.isArray(params.id) ? params.id[0] : params.id
     if (!id) return
 
+    setLoading(true)
     fetch(`/api/customers/${id}`)
       .then(async (r) => {
         if (!r.ok) throw new Error("No encontrado")
@@ -54,6 +63,46 @@ export default function ClienteDetailPage() {
       .catch(() => toast.error("Error al cargar cliente"))
       .finally(() => setLoading(false))
   }, [params.id])
+
+  useEffect(() => {
+    loadCustomer()
+  }, [loadCustomer])
+
+  const handleEdit = async () => {
+    if (!editName.trim()) return toast.error("El nombre es obligatorio")
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/customers/${customer?.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: editName, dni: editDni || null, email: editEmail || null, phone: editPhone || null }),
+      })
+      if (!res.ok) throw new Error()
+      toast.success("Cliente actualizado")
+      setEditOpen(false)
+      loadCustomer()
+    } catch {
+      toast.error("Error al actualizar cliente")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!customer) return
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/customers/${customer.id}`, { method: "DELETE" })
+      if (!res.ok) throw new Error()
+      toast.success("Cliente eliminado")
+      router.push("/clientes")
+    } catch {
+      toast.error("Error al eliminar cliente. Asegúrate de que no tenga ventas asociadas.")
+      setDeleteConfirm(false)
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -96,13 +145,35 @@ export default function ClienteDetailPage() {
               {customer.phone && <p>Tel: {customer.phone}</p>}
             </div>
           </div>
-          <div className="text-right">
-            <p className="text-sm text-text-muted dark:text-dark-muted">Cliente desde</p>
-            <p className="text-sm font-medium text-text dark:text-dark-text">
-              {new Date(customer.createdAt).toLocaleDateString("es-MX", {
-                year: "numeric", month: "long", day: "numeric",
-              })}
-            </p>
+          <div className="flex items-start gap-2">
+            <div className="text-right">
+              <p className="text-sm text-text-muted dark:text-dark-muted">Cliente desde</p>
+              <p className="text-sm font-medium text-text dark:text-dark-text">
+                {new Date(customer.createdAt).toLocaleDateString("es-MX", {
+                  year: "numeric", month: "long", day: "numeric",
+                })}
+              </p>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <button
+                onClick={() => {
+                  setEditName(customer.name)
+                  setEditDni(customer.dni ?? "")
+                  setEditEmail(customer.email ?? "")
+                  setEditPhone(customer.phone ?? "")
+                  setEditOpen(true)
+                }}
+                className="px-3 py-1.5 text-xs font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors"
+              >
+                Editar
+              </button>
+              <button
+                onClick={() => setDeleteConfirm(true)}
+                className="px-3 py-1.5 text-xs font-medium text-white bg-red-500 rounded-lg hover:bg-red-600 transition-colors"
+              >
+                Eliminar
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -176,6 +247,55 @@ export default function ClienteDetailPage() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {editOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setEditOpen(false)} />
+          <div className="relative bg-surface dark:bg-dark-surface rounded-xl border border-border dark:border-dark-border shadow-custom-sm w-full max-w-md p-6 space-y-4">
+            <h3 className="text-lg font-semibold text-text dark:text-dark-text">Editar Cliente</h3>
+            <div>
+              <label className="block text-xs font-medium text-text-muted dark:text-dark-muted mb-1">Nombre *</label>
+              <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} className="w-full px-3 py-2 bg-bg-main dark:bg-dark-bg border border-border dark:border-dark-border rounded-lg text-sm text-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-text-muted dark:text-dark-muted mb-1">DNI</label>
+              <input type="text" value={editDni} onChange={(e) => setEditDni(e.target.value)} className="w-full px-3 py-2 bg-bg-main dark:bg-dark-bg border border-border dark:border-dark-border rounded-lg text-sm text-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-text-muted dark:text-dark-muted mb-1">Email</label>
+              <input type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} className="w-full px-3 py-2 bg-bg-main dark:bg-dark-bg border border-border dark:border-dark-border rounded-lg text-sm text-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-text-muted dark:text-dark-muted mb-1">Teléfono</label>
+              <input type="text" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} className="w-full px-3 py-2 bg-bg-main dark:bg-dark-bg border border-border dark:border-dark-border rounded-lg text-sm text-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors" />
+            </div>
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button onClick={() => setEditOpen(false)} className="px-4 py-2 text-sm font-medium text-text dark:text-dark-text bg-bg-main dark:bg-dark-bg border border-border dark:border-dark-border rounded-xl hover:bg-surface transition-colors">Cancelar</button>
+              <button onClick={handleEdit} disabled={saving} className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-xl hover:bg-primary/90 disabled:opacity-50 transition-colors">
+                {saving ? "Guardando..." : "Guardar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setDeleteConfirm(false)} />
+          <div className="relative bg-surface dark:bg-dark-surface rounded-xl border border-border dark:border-dark-border shadow-custom-sm w-full max-w-sm p-6 space-y-4">
+            <h3 className="text-lg font-semibold text-text dark:text-dark-text">Eliminar Cliente</h3>
+            <p className="text-sm text-text-muted dark:text-dark-muted">
+              ¿Estás seguro de eliminar a <strong className="text-text dark:text-dark-text">{customer?.name}</strong>? Las ventas asociadas conservarán los datos del cliente pero quedarán sin vínculo.
+            </p>
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button onClick={() => setDeleteConfirm(false)} className="px-4 py-2 text-sm font-medium text-text dark:text-dark-text bg-bg-main dark:bg-dark-bg border border-border dark:border-dark-border rounded-xl hover:bg-surface transition-colors">Cancelar</button>
+              <button onClick={handleDelete} disabled={deleting} className="px-4 py-2 text-sm font-medium text-white bg-red-500 rounded-xl hover:bg-red-600 disabled:opacity-50 transition-colors">
+                {deleting ? "Eliminando..." : "Eliminar"}
+              </button>
+            </div>
           </div>
         </div>
       )}

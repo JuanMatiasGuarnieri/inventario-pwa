@@ -183,7 +183,7 @@ model Sale {
   customerName   String?
   customerDni    String?
   customerId     String?
-  customer       Customer?      @relation(fields: [customerId], references: [id])
+  customer       Customer?      @relation(fields: [customerId], references: [id], onDelete: SetNull)
   paymentMethod  PaymentMethod?
   userId         String
   user           User           @relation(fields: [userId], references: [id])

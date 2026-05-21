@@ -32,3 +32,43 @@ export async function GET(
 
   return NextResponse.json(customer)
 }
+
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET })
+  if (!token || (token.role !== "ADMIN" && token.role !== "GERENTE")) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 403 })
+  }
+
+  const { id } = await params
+  const body = await request.json()
+
+  const customer = await prisma.customer.update({
+    where: { id },
+    data: {
+      name: body.name,
+      dni: body.dni ?? null,
+      email: body.email ?? null,
+      phone: body.phone ?? null,
+    },
+  })
+
+  return NextResponse.json(customer)
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET })
+  if (!token || (token.role !== "ADMIN" && token.role !== "GERENTE")) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 403 })
+  }
+
+  const { id } = await params
+  await prisma.customer.delete({ where: { id } })
+
+  return NextResponse.json({ success: true })
+}
