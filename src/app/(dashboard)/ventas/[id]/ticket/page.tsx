@@ -43,123 +43,7 @@ export default function TicketPage() {
       .finally(() => setLoading(false))
   }, [params.id, session])
 
-  const handlePrint = () => {
-    if (!sale) return
-    const win = window.open("", "_blank")
-    if (!win) {
-      toast.error("Permite ventanas emergentes para imprimir")
-      return
-    }
-
-    const paymentLabels: Record<string, string> = { CASH: "Efectivo", CARD: "Tarjeta", MERCADO_PAGO: "Mercado Pago" }
-    const paymentBadgeClass: Record<string, string> = { CASH: "cash", CARD: "card", MERCADO_PAGO: "mp" }
-    const pm = sale.paymentMethod || ""
-    const customer = [sale.customerName, sale.customerDni].filter(Boolean).join(" — ")
-
-    win.document.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Ticket de Venta</title>
-        <style>
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body {
-            font-family: system-ui, -apple-system, sans-serif;
-            font-size: 14px;
-            color: #111;
-            background: #fff;
-            padding: 40px;
-            max-width: 500px;
-            margin: 0 auto;
-          }
-          .ticket-header { text-align: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 24px; margin-bottom: 24px; }
-          .ticket-header .icon { width: 48px; height: 48px; background: #2563eb; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; }
-          .ticket-header h1 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
-          .ticket-header p { font-size: 13px; color: #6b7280; }
-          .ticket-meta { border-bottom: 1px solid #e5e7eb; padding-bottom: 16px; margin-bottom: 16px; }
-          .ticket-meta p { font-size: 14px; color: #6b7280; margin-bottom: 4px; }
-          .ticket-meta strong { font-weight: 500; color: #111; }
-          .badge {
-            display: inline-block; padding: 2px 8px; border-radius: 999px;
-            font-size: 12px; font-weight: 500;
-          }
-          .badge.cash { background: #dcfce7; color: #15803d; }
-          .badge.card { background: #dbeafe; color: #1d4ed8; }
-          .badge.mp { background: #e0f2fe; color: #0284c7; }
-          table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
-          th {
-            text-align: left; padding: 8px 0; font-size: 11px; font-weight: 600;
-            color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;
-            border-bottom: 1px solid #e5e7eb;
-          }
-          th:nth-child(2), td:nth-child(2) { text-align: center; }
-          th:nth-child(3), td:nth-child(3) { text-align: right; }
-          th:nth-child(4), td:nth-child(4) { text-align: right; }
-          td { padding: 12px 0; border-bottom: 1px solid #f3f4f6; vertical-align: top; }
-          .product-name { font-size: 14px; font-weight: 500; color: #111; }
-          .product-code { font-size: 12px; color: #6b7280; }
-          .totals { display: flex; flex-direction: column; align-items: flex-end; }
-          .totals .row { display: flex; justify-content: space-between; width: 260px; font-size: 14px; color: #6b7280; margin-bottom: 4px; }
-          .totals .row.total {
-            border-top: 1px solid #e5e7eb; padding-top: 8px; margin-top: 4px;
-            font-size: 18px; font-weight: 700; color: #111;
-          }
-          @media print { body { padding: 0; } @page { margin: 0.5in; } }
-        </style>
-      </head>
-      <body>
-        <div class="ticket-header">
-          <div class="icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
-            </svg>
-          </div>
-          <h1>Ticket de Venta</h1>
-          <p>Folio: #${sale.id.slice(0, 8)}</p>
-          <p>${new Date(sale.createdAt).toLocaleDateString("es-MX", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })}</p>
-        </div>
-
-        <div class="ticket-meta">
-          ${customer ? `<p>Cliente: <strong>${customer}</strong></p>` : ""}
-          <p>Atendió: <strong>${sale.user.name}</strong></p>
-          ${pm ? `<p>Pago: <span class="badge ${paymentBadgeClass[pm] || ""}">${paymentLabels[pm] || pm}</span></p>` : ""}
-        </div>
-
-        <table>
-          <thead>
-            <tr>
-              <th>Producto</th>
-              <th>Cant.</th>
-              <th>Precio</th>
-              <th>Subtotal</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${sale.items.map((item) => `
-              <tr>
-                <td>
-                  <div class="product-name">${item.product.name}</div>
-                  <div class="product-code">${item.product.code}</div>
-                </td>
-                <td>${item.quantity}</td>
-                <td>$${item.price.toFixed(2)}</td>
-                <td>$${item.subtotal.toFixed(2)}</td>
-              </tr>
-            `).join("")}
-          </tbody>
-        </table>
-
-        <div class="totals">
-          <div class="row"><span>Subtotal</span><span>$${sale.total.toFixed(2)}</span></div>
-          <div class="row total"><span>Total</span><span>$${sale.total.toFixed(2)}</span></div>
-        </div>
-      </body>
-      </html>
-    `)
-    win.document.close()
-    win.focus()
-    setTimeout(() => { win.print(); win.close() }, 300)
-  }
+  const handlePrint = () => window.print()
 
   const handleDownloadPDF = async () => {
     toast.success("PDF generado (simulado)")
@@ -188,7 +72,17 @@ export default function TicketPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <>
+      <style>{`
+        @media print {
+          body * { visibility: hidden !important; }
+          .print-area, .print-area * { visibility: visible !important; }
+          .print-area { position: absolute !important; top: 0 !important; left: 0 !important; width: 100% !important; background: white !important; }
+          .no-print { display: none !important; }
+          @page { margin: 0.5in; }
+        }
+      `}</style>
+    <div className="max-w-2xl mx-auto print-area">
       <div className="no-print flex gap-3 mb-6">
         <button
           onClick={handlePrint}
@@ -316,5 +210,6 @@ export default function TicketPage() {
         </div>
       </div>
     </div>
+    </>
   )
 }
