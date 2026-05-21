@@ -11,38 +11,28 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const router = useRouter()
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
 
-    try {
-      const csrfRes = await fetch("/api/auth/csrf")
-      const { csrfToken } = await csrfRes.json()
+    const form = document.createElement("form")
+    form.method = "POST"
+    form.action = "/api/auth/callback/credentials"
+    form.style.display = "none"
 
-      const res = await fetch("/api/auth/callback/credentials", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          csrfToken,
-          email,
-          password,
-          callbackUrl: "/",
-          json: "true",
-        }),
-      })
-
-      const data = await res.json()
-
-      if (data?.url) {
-        router.push(data.url)
-      } else {
-        toast.error("Credenciales inválidas")
-      }
-    } catch (err) {
-      toast.error("Error de conexión: " + String(err))
-    } finally {
-      setLoading(false)
+    const addField = (name: string, value: string) => {
+      const input = document.createElement("input")
+      input.type = "hidden"
+      input.name = name
+      input.value = value
+      form.appendChild(input)
     }
+
+    addField("email", email)
+    addField("password", password)
+    addField("callbackUrl", "/")
+
+    document.body.appendChild(form)
+    form.submit()
   }
 
   return (
