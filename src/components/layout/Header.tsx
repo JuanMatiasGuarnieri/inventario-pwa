@@ -11,6 +11,7 @@ const routeNames: Record<string, string> = {
   "/proveedores": "Proveedores",
   "/ventas/nueva": "Nueva Venta",
   "/ventas/historial": "Historial de Ventas",
+  "/clientes": "Clientes",
   "/movimientos": "Movimientos",
   "/reportes": "Reportes",
   "/usuarios": "Usuarios",
