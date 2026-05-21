@@ -118,14 +118,23 @@ export default function NuevaVentaPage() {
     try {
       let finalCustomerId = customerId
       if (customerName && !customerId) {
-        const res = await fetch("/api/customers", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: customerName, dni: customerDni || undefined }),
-        })
-        if (res.ok) {
-          const newCustomer = await res.json()
-          finalCustomerId = newCustomer.id
+        const searchRes = await fetch(`/api/customers?search=${encodeURIComponent(customerName)}`)
+        const existing = searchRes.ok ? await searchRes.json() : []
+        const match = existing.find(
+          (c: any) => c.name.toLowerCase() === customerName.toLowerCase() && (!customerDni || c.dni === customerDni)
+        )
+        if (match) {
+          finalCustomerId = match.id
+        } else {
+          const createRes = await fetch("/api/customers", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: customerName, dni: customerDni || undefined }),
+          })
+          if (createRes.ok) {
+            const newCustomer = await createRes.json()
+            finalCustomerId = newCustomer.id
+          }
         }
       }
 
