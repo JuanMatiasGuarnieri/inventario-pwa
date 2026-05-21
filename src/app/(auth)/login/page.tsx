@@ -2,43 +2,34 @@
 
 import { signIn } from "next-auth/react"
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import toast from "react-hot-toast"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
-  const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
 
     try {
-      const csrfRes = await fetch("/api/auth/csrf")
-      const { csrfToken } = await csrfRes.json()
+      const result = await signIn("credentials", {
+        email,
+        password,
+        callbackUrl: "/",
+        redirect: false,
+      })
 
-      const form = document.createElement("form")
-      form.method = "POST"
-      form.action = "/api/auth/callback/credentials"
-      form.style.display = "none"
-
-      const addField = (name: string, value: string) => {
-        const input = document.createElement("input")
-        input.type = "hidden"
-        input.name = name
-        input.value = value
-        form.appendChild(input)
+      if (result?.error) {
+        toast.error("Email o contraseña incorrectos")
+        setLoading(false)
+        return
       }
 
-      addField("csrfToken", csrfToken)
-      addField("email", email)
-      addField("password", password)
-      addField("callbackUrl", "/")
-
-      document.body.appendChild(form)
-      form.submit()
+      if (result?.url) {
+        window.location.href = result.url
+      }
     } catch {
       toast.error("Error al iniciar sesión")
       setLoading(false)
