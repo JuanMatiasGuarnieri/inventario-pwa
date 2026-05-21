@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { useCart } from "@/store/useCart"
 import toast from "react-hot-toast"
@@ -12,7 +12,20 @@ interface SearchProduct {
   name: string
   price: number
   stock: number
+  image: string | null
+  category: { id: string; name: string } | null
 }
+
+const PLACEHOLDER_COLORS = [
+  "from-blue-500 to-blue-600",
+  "from-emerald-500 to-emerald-600",
+  "from-violet-500 to-violet-600",
+  "from-rose-500 to-rose-600",
+  "from-amber-500 to-amber-600",
+  "from-cyan-500 to-cyan-600",
+  "from-pink-500 to-pink-600",
+  "from-teal-500 to-teal-600",
+]
 
 export default function NuevaVentaPage() {
   const router = useRouter()
@@ -29,42 +42,48 @@ export default function NuevaVentaPage() {
   } = useCart()
 
   const [search, setSearch] = useState("")
-  const [results, setResults] = useState<SearchProduct[]>([])
-  const [loading, setLoading] = useState(false)
+  const [allProducts, setAllProducts] = useState<SearchProduct[]>([])
+  const [selectedCategory, setSelectedCategory] = useState("")
+  const [loading, setLoading] = useState(true)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [customerName, setCustomerName] = useState("")
   const [customerDni, setCustomerDni] = useState("")
   const [paymentMethod, setPaymentMethod] = useState("CASH")
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current)
+    setLoading(true)
+    fetch("/api/products")
+      .then((r) => r.json())
+      .then(setAllProducts)
+      .catch(() => toast.error("Error al cargar productos"))
+      .finally(() => setLoading(false))
+  }, [])
 
-    if (!search.trim()) {
-      setResults([])
-      return
+  const categories = useMemo(() => {
+    const map = new Map<string, string>()
+    allProducts.forEach((p) => {
+      if (p.category) map.set(p.category.id, p.category.name)
+    })
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }))
+  }, [allProducts])
+
+  const filteredProducts = useMemo(() => {
+    let list = allProducts
+    if (selectedCategory) {
+      list = list.filter((p) => p.category?.id === selectedCategory)
     }
-
-    debounceRef.current = setTimeout(async () => {
-      setLoading(true)
-      try {
-        const res = await fetch(`/api/products?search=${encodeURIComponent(search)}`)
-        if (res.ok) {
-          const data = await res.json()
-          setResults(data)
-        }
-      } catch {
-        // ignore
-      } finally {
-        setLoading(false)
-      }
-    }, 300)
-
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current)
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      list = list.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          p.code.toLowerCase().includes(q) ||
+          (p.barcode && p.barcode.toLowerCase().includes(q))
+      )
     }
-  }, [search])
+    return list
+  }, [allProducts, selectedCategory, search])
 
   const handleAdd = (product: SearchProduct) => {
     addItem({
@@ -144,64 +163,104 @@ export default function NuevaVentaPage() {
             />
           </div>
 
+          {categories.length > 0 && (
+            <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+              <button
+                onClick={() => setSelectedCategory("")}
+                className={`shrink-0 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                  !selectedCategory
+                    ? "bg-primary text-white"
+                    : "bg-surface dark:bg-dark-surface text-text-muted dark:text-dark-muted border border-border dark:border-dark-border hover:bg-bg-main"
+                }`}
+              >
+                Todos
+              </button>
+              {categories.map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => setSelectedCategory(cat.id)}
+                  className={`shrink-0 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                    selectedCategory === cat.id
+                      ? "bg-primary text-white"
+                      : "bg-surface dark:bg-dark-surface text-text-muted dark:text-dark-muted border border-border dark:border-dark-border hover:bg-bg-main"
+                  }`}
+                >
+                  {cat.name}
+                </button>
+              ))}
+            </div>
+          )}
+
           {loading && (
             <div className="flex items-center justify-center py-12">
               <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
             </div>
           )}
 
-          {!loading && search.trim() && results.length === 0 && (
+          {!loading && filteredProducts.length === 0 && (
             <div className="text-center py-12 text-sm text-text-muted dark:text-dark-muted">
-              No se encontraron productos
+              {search.trim() || selectedCategory
+                ? "No se encontraron productos"
+                : "No hay productos activos"}
             </div>
           )}
 
-          {!loading && results.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-              {results.map((product) => (
+          {!loading && filteredProducts.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
+              {filteredProducts.map((product, idx) => (
                 <div
                   key={product.id}
-                  className="bg-surface dark:bg-dark-surface border border-border dark:border-dark-border rounded-xl shadow-custom-sm p-4 space-y-2"
+                  className={`bg-surface dark:bg-dark-surface border rounded-xl shadow-custom-sm overflow-hidden transition-all hover:shadow-md ${
+                    product.stock === 0
+                      ? "border-red-200 dark:border-red-900/50 opacity-60"
+                      : "border-border dark:border-dark-border"
+                  }`}
                 >
-                  <p className="font-medium text-sm text-text dark:text-dark-text truncate">
-                    {product.name}
-                  </p>
-                  <p className="text-xs text-text-muted dark:text-dark-muted">
-                    {product.code}
-                  </p>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-semibold text-text dark:text-dark-text">
-                      ${product.price.toFixed(2)}
+                  {/* Image placeholder */}
+                  <div className={`h-28 flex items-center justify-center bg-gradient-to-br ${PLACEHOLDER_COLORS[idx % PLACEHOLDER_COLORS.length]}`}>
+                    <span className="text-3xl font-bold text-white/90 select-none">
+                      {product.name.charAt(0).toUpperCase()}
                     </span>
-                    {product.stock === 0 ? (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
-                        Sin stock
-                      </span>
-                    ) : product.stock <= 5 ? (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-                        {product.stock}
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                        {product.stock}
-                      </span>
-                    )}
                   </div>
-                  <button
-                    onClick={() => handleAdd(product)}
-                    disabled={product.stock === 0}
-                    className="w-full mt-1 px-3 py-1.5 text-sm font-medium text-white bg-primary rounded-xl hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    Agregar
-                  </button>
+
+                  <div className="p-3 space-y-2">
+                    <div>
+                      <p className="text-sm font-medium text-text dark:text-dark-text truncate leading-tight">
+                        {product.name}
+                      </p>
+                      <p className="text-xs text-text-muted dark:text-dark-muted mt-0.5">
+                        {product.code}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-base font-bold text-text dark:text-dark-text">
+                        ${product.price.toFixed(2)}
+                      </span>
+                      {product.stock === 0 ? (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                          Sin stock
+                        </span>
+                      ) : product.stock <= 5 ? (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                          {product.stock} u.
+                        </span>
+                      ) : null}
+                    </div>
+
+                    <button
+                      onClick={() => handleAdd(product)}
+                      disabled={product.stock === 0}
+                      className="w-full px-3 py-1.5 text-xs font-medium text-white bg-primary rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-1"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                      </svg>
+                      Agregar
+                    </button>
+                  </div>
                 </div>
               ))}
-            </div>
-          )}
-
-          {!search.trim() && (
-            <div className="text-center py-12 text-sm text-text-muted dark:text-dark-muted">
-              Escribe para buscar productos
             </div>
           )}
         </div>
