@@ -116,6 +116,19 @@ export default function NuevaVentaPage() {
   const handleConfirm = async () => {
     setSubmitting(true)
     try {
+      let finalCustomerId = customerId
+      if (customerName && !customerId) {
+        const res = await fetch("/api/customers", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: customerName, dni: customerDni || undefined }),
+        })
+        if (res.ok) {
+          const newCustomer = await res.json()
+          finalCustomerId = newCustomer.id
+        }
+      }
+
       const body: Record<string, any> = {
         items: items.map((i) => ({
           productId: i.productId,
@@ -126,7 +139,7 @@ export default function NuevaVentaPage() {
       }
       if (customerName) body.customerName = customerName
       if (customerDni) body.customerDni = customerDni
-      if (customerId) body.customerId = customerId
+      if (finalCustomerId) body.customerId = finalCustomerId
       const res = await fetch("/api/sales", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
