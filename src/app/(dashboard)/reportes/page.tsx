@@ -9,6 +9,7 @@ import {
 } from "recharts"
 
 interface ReportData {
+  users: Array<{ id: string; name: string }>
   salesByDay: Array<{ date: string; total: number; count: number }>
   topProducts: Array<{ name: string; total: number; quantity: number }>
   categoryDistribution: Array<{ name: string; count: number }>
@@ -28,6 +29,7 @@ export default function ReportesPage() {
   const [data, setData] = useState<ReportData | null>(null)
   const [loading, setLoading] = useState(true)
   const [days, setDays] = useState("30")
+  const [userId, setUserId] = useState("")
 
   useEffect(() => {
     if (session?.user?.role === "EMPLEADO") {
@@ -37,11 +39,13 @@ export default function ReportesPage() {
   }, [session, router])
 
   useEffect(() => {
-    fetch(`/api/reports?days=${days}`)
+    const params = new URLSearchParams({ days })
+    if (userId) params.set("userId", userId)
+    fetch(`/api/reports?${params}`)
       .then((r) => r.json())
       .then(setData)
       .finally(() => setLoading(false))
-  }, [days])
+  }, [days, userId])
 
   if (loading || !data) {
     return (
@@ -55,15 +59,29 @@ export default function ReportesPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <h2 className="text-xl font-bold text-text dark:text-dark-text">Reportes</h2>
-        <select
-          value={days}
-          onChange={(e) => setDays(e.target.value)}
-          className="px-3 py-2 rounded-lg border border-border dark:border-dark-border bg-surface dark:bg-dark-surface text-text dark:text-dark-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-        >
-          <option value="7">Últimos 7 días</option>
-          <option value="30">Últimos 30 días</option>
-          <option value="90">Últimos 90 días</option>
-        </select>
+        <div className="flex items-center gap-2">
+          <select
+            value={userId}
+            onChange={(e) => setUserId(e.target.value)}
+            className="px-3 py-2 rounded-lg border border-border dark:border-dark-border bg-surface dark:bg-dark-surface text-text dark:text-dark-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >
+            <option value="">Todos los empleados</option>
+            {data?.users.map((user) => (
+              <option key={user.id} value={user.id}>
+                {user.name}
+              </option>
+            ))}
+          </select>
+          <select
+            value={days}
+            onChange={(e) => setDays(e.target.value)}
+            className="px-3 py-2 rounded-lg border border-border dark:border-dark-border bg-surface dark:bg-dark-surface text-text dark:text-dark-text text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >
+            <option value="7">Últimos 7 días</option>
+            <option value="30">Últimos 30 días</option>
+            <option value="90">Últimos 90 días</option>
+          </select>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

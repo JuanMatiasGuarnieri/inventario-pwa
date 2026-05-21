@@ -10,13 +10,17 @@ export async function GET(request: NextRequest) {
 
   const { searchParams } = new URL(request.url)
   const days = parseInt(searchParams.get("days") || "30")
+  const userId = searchParams.get("userId") || ""
 
   const startDate = new Date()
   startDate.setDate(startDate.getDate() - days)
 
-  const [sales, products, categories] = await Promise.all([
+  const where: any = { createdAt: { gte: startDate } }
+  if (userId) where.userId = userId
+
+  const [sales, products, categories, users] = await Promise.all([
     prisma.sale.findMany({
-      where: { createdAt: { gte: startDate } },
+      where,
       include: {
         items: { include: { product: { select: { name: true, categoryId: true } } } },
       },
@@ -29,6 +33,11 @@ export async function GET(request: NextRequest) {
     prisma.category.findMany({
       where: { active: true },
       select: { id: true, name: true },
+    }),
+    prisma.user.findMany({
+      where: { active: true },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
     }),
   ])
 
@@ -77,6 +86,7 @@ export async function GET(request: NextRequest) {
   const totalTransactions = sales.length
 
   return NextResponse.json({
+    users,
     salesByDay,
     topProducts,
     categoryDistribution,
