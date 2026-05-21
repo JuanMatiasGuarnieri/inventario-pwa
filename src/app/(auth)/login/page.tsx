@@ -15,25 +15,11 @@ export default function LoginPage() {
     e.preventDefault()
     setLoading(true)
 
-    try {
-      const result = await signIn("credentials", {
-        email,
-        password,
-        redirect: false,
-      })
-
-      if (result?.error) {
-        toast.error("Credenciales inválidas")
-        setLoading(false)
-        return
-      }
-
-      router.push("/")
-      router.refresh()
-    } catch (err) {
-      toast.error("Error de conexión: " + String(err))
-      setLoading(false)
-    }
+    await signIn("credentials", {
+      email,
+      password,
+      callbackUrl: "/",
+    })
   }
 
   return (
@@ -73,14 +59,15 @@ export default function LoginPage() {
               <label className="block text-sm font-medium text-text dark:text-dark-text mb-1.5">
                 Contraseña
               </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                className="w-full px-3 py-2.5 rounded-lg border border-border dark:border-dark-border bg-surface dark:bg-dark-surface text-text dark:text-dark-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200"
-              />
+                <input
+                  type="password"
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  className="w-full px-3 py-2.5 rounded-lg border border-border dark:border-dark-border bg-surface dark:bg-dark-surface text-text dark:text-dark-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200"
+                />
             </div>
 
             <button
