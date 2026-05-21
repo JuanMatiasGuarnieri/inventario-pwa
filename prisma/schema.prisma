@@ -20,6 +20,12 @@ enum MovementType {
   SALE
 }
 
+enum PaymentMethod {
+  CASH
+  CARD
+  MERCADO_PAGO
+}
+
 model User {
   id        String   @id @default(cuid())
   name      String
@@ -156,13 +162,14 @@ model StockMovement {
 }
 
 model Sale {
-  id           String   @id @default(cuid())
-  total        Float
-  customerName String?
-  customerDni  String?
-  userId       String
-  user         User     @relation(fields: [userId], references: [id])
-  createdAt    DateTime @default(now())
+  id             String         @id @default(cuid())
+  total          Float
+  customerName   String?
+  customerDni    String?
+  paymentMethod  PaymentMethod?
+  userId         String
+  user           User           @relation(fields: [userId], references: [id])
+  createdAt      DateTime       @default(now())
 
   items SaleItem[]
 

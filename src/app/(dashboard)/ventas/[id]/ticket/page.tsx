@@ -127,6 +127,20 @@ export default function TicketPage() {
           <p className="text-sm text-text-muted dark:text-dark-muted">
             Atendió: <span className="font-medium text-text dark:text-dark-text">{sale.user.name}</span>
           </p>
+          {(sale as any).paymentMethod && (
+            <p className="text-sm text-text-muted dark:text-dark-muted">
+              Pago:{" "}
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                (sale as any).paymentMethod === "CASH"
+                  ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                  : (sale as any).paymentMethod === "CARD"
+                  ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                  : "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400"
+              }`}>
+                {(sale as any).paymentMethod === "CASH" ? "Efectivo" : (sale as any).paymentMethod === "CARD" ? "Tarjeta" : "Mercado Pago"}
+              </span>
+            </p>
+          )}
         </div>
 
         <table className="w-full mb-6">

@@ -35,6 +35,7 @@ export default function NuevaVentaPage() {
   const [submitting, setSubmitting] = useState(false)
   const [customerName, setCustomerName] = useState("")
   const [customerDni, setCustomerDni] = useState("")
+  const [paymentMethod, setPaymentMethod] = useState("CASH")
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   useEffect(() => {
@@ -85,6 +86,7 @@ export default function NuevaVentaPage() {
           quantity: i.quantity,
           price: i.price,
         })),
+        paymentMethod,
       }
       if (customerName) body.customerName = customerName
       if (customerDni) body.customerDni = customerDni
@@ -480,6 +482,28 @@ export default function NuevaVentaPage() {
                     className="w-full px-3 py-2 bg-bg-main dark:bg-dark-bg border border-border dark:border-dark-border rounded-lg text-sm text-text dark:text-dark-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
                   />
                 </div>
+              </div>
+
+              <div className="pb-3 border-b border-border dark:border-dark-border">
+                <label className="block text-xs font-medium text-text-muted dark:text-dark-muted mb-1.5">
+                  Método de pago
+                </label>
+                <select
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
+                  className="w-full px-3 py-2 bg-bg-main dark:bg-dark-bg border border-border dark:border-dark-border rounded-lg text-sm text-text dark:text-dark-text focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                >
+                  <option value="CASH">Efectivo</option>
+                  <option value="CARD">Tarjeta</option>
+                  <option value="MERCADO_PAGO" disabled>
+                    Mercado Pago (Próximamente)
+                  </option>
+                </select>
+                {paymentMethod === "MERCADO_PAGO" && (
+                  <p className="mt-1.5 text-xs text-amber-600 dark:text-amber-400">
+                    Próximamente disponible
+                  </p>
+                )}
               </div>
               {items.map((item) => (
                 <div

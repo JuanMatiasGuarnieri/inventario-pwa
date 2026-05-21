@@ -17,6 +17,7 @@ interface Sale {
   total: number
   customerName?: string | null
   customerDni?: string | null
+  paymentMethod?: string | null
   createdAt: string
   userId: string
   user: { name: string; email: string }
@@ -164,6 +165,9 @@ export default function HistorialVentasPage() {
                 <th className="text-left px-5 py-3.5 text-xs font-semibold text-text-muted dark:text-dark-muted uppercase tracking-wider">
                   Empleado
                 </th>
+                <th className="text-left px-5 py-3.5 text-xs font-semibold text-text-muted dark:text-dark-muted uppercase tracking-wider hidden md:table-cell">
+                  Pago
+                </th>
                 <th className="text-left px-5 py-3.5 text-xs font-semibold text-text-muted dark:text-dark-muted uppercase tracking-wider">
                   Total
                 </th>
@@ -207,6 +211,21 @@ export default function HistorialVentasPage() {
                     </td>
                     <td className="px-5 py-4 text-sm text-text dark:text-dark-text">
                       {sale.user.name}
+                    </td>
+                    <td className="px-5 py-4 text-sm hidden md:table-cell">
+                      {sale.paymentMethod ? (
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                          sale.paymentMethod === "CASH"
+                            ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                            : sale.paymentMethod === "CARD"
+                            ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                            : "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400"
+                        }`}>
+                          {sale.paymentMethod === "CASH" ? "Efectivo" : sale.paymentMethod === "CARD" ? "Tarjeta" : "M. Pago"}
+                        </span>
+                      ) : (
+                        <span className="text-text-muted dark:text-dark-muted">—</span>
+                      )}
                     </td>
                     <td className="px-5 py-4 text-sm font-medium text-text dark:text-dark-text">
                       ${sale.total.toFixed(2)}

@@ -41,16 +41,13 @@ export async function POST(request: NextRequest) {
 
   try {
     const sale = await processSale(body.items, token.id as string)
-    if (body.customerName || body.customerDni) {
-      await prisma.sale.update({
-        where: { id: sale.id },
-        data: {
-          customerName: body.customerName || null,
-          customerDni: body.customerDni || null,
-        },
-      })
-      sale.customerName = body.customerName || null
-      sale.customerDni = body.customerDni || null
+    const updateData: Record<string, any> = {}
+    if (body.customerName) updateData.customerName = body.customerName
+    if (body.customerDni) updateData.customerDni = body.customerDni
+    if (body.paymentMethod) updateData.paymentMethod = body.paymentMethod
+    if (Object.keys(updateData).length > 0) {
+      await prisma.sale.update({ where: { id: sale.id }, data: updateData })
+      Object.assign(sale, updateData)
     }
     return NextResponse.json(sale)
   } catch (error: any) {
