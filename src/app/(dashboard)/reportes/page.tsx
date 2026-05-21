@@ -1,8 +1,9 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
+import toast from "react-hot-toast"
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell
@@ -35,6 +36,57 @@ export default function ReportesPage() {
   const [days, setDays] = useState("30")
   const [userId, setUserId] = useState("")
   const [profitView, setProfitView] = useState(false)
+  const reportsRef = useRef<HTMLDivElement>(null)
+
+  const handleExportCSV = () => {
+    const rows: string[][] = []
+    rows.push(["Reporte de Ventas", "", "", "", ""])
+    rows.push([])
+    rows.push(["Métrica", "Valor"])
+    rows.push(["Ventas Totales", `$${data!.summary.totalRevenue.toFixed(2)}`])
+    rows.push(["Ganancia Neta", `$${data!.summary.totalProfit.toFixed(2)}`])
+    rows.push(["Margen", `${data!.summary.averageMargin.toFixed(1)}%`])
+    rows.push(["Transacciones", String(data!.summary.totalTransactions)])
+    rows.push(["Ticket Promedio", `$${data!.summary.averageTicket.toFixed(2)}`])
+    rows.push(["Productos Vendidos", String(data!.summary.totalSales)])
+    rows.push([])
+    rows.push(["Producto", "Cantidad", "Total"])
+    data!.topProducts.forEach((p) => rows.push([p.name, String(p.quantity), `$${p.total.toFixed(2)}`]))
+    rows.push([])
+    rows.push(["Producto (Ganancia)", "Ganancia", "Margen"])
+    data!.topProfitProducts.forEach((p) => rows.push([p.name, `$${p.profit.toFixed(2)}`, `${p.margin.toFixed(1)}%`]))
+
+    const csv = rows.map((r) => r.map((c) => `"${c}"`).join(",")).join("\n")
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `reporte-ventas-${days}-dias.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+    toast.success("CSV descargado")
+  }
+
+  const handleDownloadPDF = async () => {
+    if (!reportsRef.current) return
+    toast.loading("Generando PDF...")
+    try {
+      const html2canvas = (await import("html2canvas")).default
+      const { jsPDF } = await import("jspdf")
+      const canvas = await html2canvas(reportsRef.current, { scale: 2, backgroundColor: "#ffffff" })
+      const imgData = canvas.toDataURL("image/png")
+      const pdf = new jsPDF("p", "mm", "a4")
+      const imgWidth = 190
+      const imgHeight = (canvas.height * imgWidth) / canvas.width
+      pdf.addImage(imgData, "PNG", 10, 10, imgWidth, imgHeight)
+      pdf.save(`reporte-ventas-${days}-dias.pdf`)
+      toast.dismiss()
+      toast.success("PDF descargado")
+    } catch {
+      toast.dismiss()
+      toast.error("Error al generar PDF")
+    }
+  }
 
   useEffect(() => {
     if (session?.user?.role === "EMPLEADO") {
@@ -86,9 +138,22 @@ export default function ReportesPage() {
             <option value="30">Últimos 30 días</option>
             <option value="90">Últimos 90 días</option>
           </select>
+          <button
+            onClick={handleExportCSV}
+            className="px-3 py-2 text-sm font-medium text-text dark:text-dark-text bg-surface dark:bg-dark-surface border border-border dark:border-dark-border rounded-lg hover:bg-bg-main transition-colors"
+          >
+            CSV
+          </button>
+          <button
+            onClick={handleDownloadPDF}
+            className="px-3 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors"
+          >
+            PDF
+          </button>
         </div>
       </div>
 
+      <div ref={reportsRef} className="space-y-6">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <div className="bg-surface dark:bg-dark-surface rounded-xl border border-border dark:border-dark-border shadow-custom-sm p-5">
           <p className="text-sm text-text-muted dark:text-dark-muted">Ventas Totales</p>
@@ -227,6 +292,7 @@ export default function ReportesPage() {
           </div>
         </div>
       </div>
+    </div>
     </div>
   )
 }
