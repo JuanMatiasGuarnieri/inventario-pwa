@@ -11,28 +11,38 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const router = useRouter()
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setLoading(true)
 
-    const form = document.createElement("form")
-    form.method = "POST"
-    form.action = "/api/auth/callback/credentials"
-    form.style.display = "none"
+    try {
+      const csrfRes = await fetch("/api/auth/csrf")
+      const { csrfToken } = await csrfRes.json()
 
-    const addField = (name: string, value: string) => {
-      const input = document.createElement("input")
-      input.type = "hidden"
-      input.name = name
-      input.value = value
-      form.appendChild(input)
+      const form = document.createElement("form")
+      form.method = "POST"
+      form.action = "/api/auth/callback/credentials"
+      form.style.display = "none"
+
+      const addField = (name: string, value: string) => {
+        const input = document.createElement("input")
+        input.type = "hidden"
+        input.name = name
+        input.value = value
+        form.appendChild(input)
+      }
+
+      addField("csrfToken", csrfToken)
+      addField("email", email)
+      addField("password", password)
+      addField("callbackUrl", "/")
+
+      document.body.appendChild(form)
+      form.submit()
+    } catch {
+      toast.error("Error al iniciar sesión")
+      setLoading(false)
     }
-
-    addField("email", email)
-    addField("password", password)
-    addField("callbackUrl", "/")
-
-    document.body.appendChild(form)
-    form.submit()
   }
 
   return (
