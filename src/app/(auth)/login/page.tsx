@@ -23,18 +23,13 @@ export default function LoginPage() {
       })
 
       if (result?.error) {
-        toast.error("Credenciales inválidas: " + result.error)
+        toast.error("Credenciales inválidas")
         setLoading(false)
         return
       }
 
-      if (result?.ok) {
-        router.push("/")
-        router.refresh()
-      } else {
-        toast.error("Error desconocido: " + JSON.stringify(result))
-        setLoading(false)
-      }
+      router.push("/")
+      router.refresh()
     } catch (err) {
       toast.error("Error de conexión: " + String(err))
       setLoading(false)
