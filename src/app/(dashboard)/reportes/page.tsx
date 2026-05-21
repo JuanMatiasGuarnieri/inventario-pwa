@@ -12,12 +12,16 @@ interface ReportData {
   users: Array<{ id: string; name: string }>
   salesByDay: Array<{ date: string; total: number; count: number }>
   topProducts: Array<{ name: string; total: number; quantity: number }>
+  topProfitProducts: Array<{ name: string; profit: number; margin: number; quantity: number }>
   categoryDistribution: Array<{ name: string; count: number }>
   summary: {
     totalSales: number
     totalRevenue: number
+    totalCost: number
+    totalProfit: number
     totalTransactions: number
     averageTicket: number
+    averageMargin: number
   }
 }
 
@@ -30,6 +34,7 @@ export default function ReportesPage() {
   const [loading, setLoading] = useState(true)
   const [days, setDays] = useState("30")
   const [userId, setUserId] = useState("")
+  const [profitView, setProfitView] = useState(false)
 
   useEffect(() => {
     if (session?.user?.role === "EMPLEADO") {
@@ -84,11 +89,20 @@ export default function ReportesPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <div className="bg-surface dark:bg-dark-surface rounded-xl border border-border dark:border-dark-border shadow-custom-sm p-5">
           <p className="text-sm text-text-muted dark:text-dark-muted">Ventas Totales</p>
           <p className="text-2xl font-bold text-text dark:text-dark-text mt-1">
             {new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(data.summary.totalRevenue)}
+          </p>
+        </div>
+        <div className="bg-surface dark:bg-dark-surface rounded-xl border border-border dark:border-dark-border shadow-custom-sm p-5">
+          <p className="text-sm text-text-muted dark:text-dark-muted">Ganancia Neta</p>
+          <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">
+            {new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(data.summary.totalProfit)}
+          </p>
+          <p className="text-xs text-text-muted dark:text-dark-muted mt-0.5">
+            Margen {data.summary.averageMargin.toFixed(1)}%
           </p>
         </div>
         <div className="bg-surface dark:bg-dark-surface rounded-xl border border-border dark:border-dark-border shadow-custom-sm p-5">
@@ -134,12 +148,46 @@ export default function ReportesPage() {
         </div>
 
         <div className="bg-surface dark:bg-dark-surface rounded-xl border border-border dark:border-dark-border shadow-custom-sm p-5">
-          <h3 className="text-lg font-semibold text-text dark:text-dark-text mb-4">Productos Más Vendidos</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-text dark:text-dark-text">
+              {profitView ? "Productos más Rentables" : "Productos Más Vendidos"}
+            </h3>
+            <div className="flex bg-bg-main dark:bg-dark-bg rounded-lg p-0.5">
+              <button
+                onClick={() => setProfitView(false)}
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                  !profitView
+                    ? "bg-surface dark:bg-dark-surface text-text dark:text-dark-text shadow-custom-sm"
+                    : "text-text-muted dark:text-dark-muted hover:text-text"
+                }`}
+              >
+                Cantidad
+              </button>
+              <button
+                onClick={() => setProfitView(true)}
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                  profitView
+                    ? "bg-surface dark:bg-dark-surface text-text dark:text-dark-text shadow-custom-sm"
+                    : "text-text-muted dark:text-dark-muted hover:text-text"
+                }`}
+              >
+                Ganancia
+              </button>
+            </div>
+          </div>
           <div className="h-72 w-full min-w-0">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data.topProducts.slice(0, 10)} layout="vertical">
+              <BarChart
+                data={(profitView ? data.topProfitProducts.slice(0, 10) : data.topProducts.slice(0, 10)) as any[]}
+                layout="vertical"
+              >
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis type="number" tick={{ fontSize: 12 }} stroke="#64748b" />
+                <XAxis
+                  type="number"
+                  tick={{ fontSize: 12 }}
+                  stroke="#64748b"
+                  tickFormatter={(v) => profitView ? `$${v}` : `${v}`}
+                />
                 <YAxis dataKey="name" type="category" tick={{ fontSize: 11 }} stroke="#64748b" width={120} />
                 <Tooltip
                   contentStyle={{
@@ -147,8 +195,9 @@ export default function ReportesPage() {
                     border: "1px solid #e2e8f0",
                     borderRadius: "8px",
                   }}
+                  formatter={(value: any) => profitView ? [`$${Number(value).toFixed(2)}`, "Ganancia"] : [value, "Cantidad"]}
                 />
-                <Bar dataKey="quantity" fill="#10b981" radius={[0, 4, 4, 0]} />
+                <Bar dataKey={profitView ? "profit" : "quantity"} fill={profitView ? "#f59e0b" : "#10b981"} radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

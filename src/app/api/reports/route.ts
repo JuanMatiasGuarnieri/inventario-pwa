@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     prisma.sale.findMany({
       where,
       include: {
-        items: { include: { product: { select: { name: true, categoryId: true } } } },
+        items: { include: { product: { select: { name: true, categoryId: true, cost: true } } } },
       },
       orderBy: { createdAt: "asc" },
     }),
@@ -43,6 +43,9 @@ export async function GET(request: NextRequest) {
 
   const salesByDayMap: Record<string, { total: number; count: number }> = {}
   const productSalesMap: Record<string, { name: string; quantity: number; total: number }> = {}
+  const productProfitMap: Record<string, { name: string; profit: number; margin: number; quantity: number }> = {}
+  let totalCost = 0
+  let totalRevenue = 0
 
   for (const sale of sales) {
     const dateKey = sale.createdAt.toISOString().split("T")[0]
@@ -51,6 +54,13 @@ export async function GET(request: NextRequest) {
     salesByDayMap[dateKey].count += 1
 
     for (const item of sale.items) {
+      const cost = item.product.cost || 0
+      const costTotal = cost * item.quantity
+      const profit = item.subtotal - costTotal
+
+      totalRevenue += item.subtotal
+      totalCost += costTotal
+
       if (!productSalesMap[item.productId]) {
         productSalesMap[item.productId] = {
           name: item.product.name,
@@ -60,7 +70,18 @@ export async function GET(request: NextRequest) {
       }
       productSalesMap[item.productId].quantity += item.quantity
       productSalesMap[item.productId].total += item.subtotal
+
+      if (!productProfitMap[item.productId]) {
+        productProfitMap[item.productId] = { name: item.product.name, profit: 0, margin: 0, quantity: 0 }
+      }
+      productProfitMap[item.productId].profit += profit
+      productProfitMap[item.productId].quantity += item.quantity
     }
+  }
+
+  for (const id of Object.keys(productProfitMap)) {
+    const p = productProfitMap[id]
+    p.margin = p.profit > 0 && productSalesMap[id]?.total ? (p.profit / productSalesMap[id].total) * 100 : 0
   }
 
   const salesByDay = Object.entries(salesByDayMap)
@@ -82,19 +103,27 @@ export async function GET(request: NextRequest) {
     .filter((c) => categoryCount[c.id])
     .map((c) => ({ name: c.name, count: categoryCount[c.id] || 0 }))
 
-  const totalRevenue = sales.reduce((sum, s) => sum + s.total, 0)
+  const topProfitProducts = Object.values(productProfitMap)
+    .sort((a, b) => b.profit - a.profit)
+    .slice(0, 10)
+
+  const totalProfit = totalRevenue - totalCost
   const totalTransactions = sales.length
 
   return NextResponse.json({
     users,
     salesByDay,
     topProducts,
+    topProfitProducts,
     categoryDistribution,
     summary: {
       totalSales: topProducts.reduce((sum, p) => sum + p.quantity, 0),
       totalRevenue,
+      totalCost,
+      totalProfit,
       totalTransactions,
       averageTicket: totalTransactions > 0 ? totalRevenue / totalTransactions : 0,
+      averageMargin: totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0,
     },
   })
 }
