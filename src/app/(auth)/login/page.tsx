@@ -15,11 +15,34 @@ export default function LoginPage() {
     e.preventDefault()
     setLoading(true)
 
-    await signIn("credentials", {
-      email,
-      password,
-      callbackUrl: "/",
-    })
+    try {
+      const csrfRes = await fetch("/api/auth/csrf")
+      const { csrfToken } = await csrfRes.json()
+
+      const res = await fetch("/api/auth/callback/credentials", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          csrfToken,
+          email,
+          password,
+          callbackUrl: "/",
+          json: "true",
+        }),
+      })
+
+      const data = await res.json()
+
+      if (data?.url) {
+        router.push(data.url)
+      } else {
+        toast.error("Credenciales inválidas")
+      }
+    } catch (err) {
+      toast.error("Error de conexión: " + String(err))
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
