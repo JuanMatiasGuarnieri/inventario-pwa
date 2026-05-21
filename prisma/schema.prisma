@@ -161,11 +161,29 @@ model StockMovement {
   @@map("stock_movements")
 }
 
+model Customer {
+  id        String   @id @default(cuid())
+  name      String
+  dni       String?
+  email     String?
+  phone     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sales Sale[]
+
+  @@index([name])
+  @@index([dni])
+  @@map("customers")
+}
+
 model Sale {
   id             String         @id @default(cuid())
   total          Float
   customerName   String?
   customerDni    String?
+  customerId     String?
+  customer       Customer?      @relation(fields: [customerId], references: [id])
   paymentMethod  PaymentMethod?
   userId         String
   user           User           @relation(fields: [userId], references: [id])
@@ -173,6 +191,7 @@ model Sale {
 
   items SaleItem[]
 
+  @@index([customerId])
   @@index([userId])
   @@index([createdAt])
   @@map("sales")

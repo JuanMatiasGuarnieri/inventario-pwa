@@ -44,6 +44,7 @@ export async function POST(request: NextRequest) {
     const updateData: Record<string, any> = {}
     if (body.customerName) updateData.customerName = body.customerName
     if (body.customerDni) updateData.customerDni = body.customerDni
+    if (body.customerId) updateData.customerId = body.customerId
     if (body.paymentMethod) updateData.paymentMethod = body.paymentMethod
     if (Object.keys(updateData).length > 0) {
       await prisma.sale.update({ where: { id: sale.id }, data: updateData })

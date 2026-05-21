@@ -49,6 +49,9 @@ export default function NuevaVentaPage() {
   const [submitting, setSubmitting] = useState(false)
   const [customerName, setCustomerName] = useState("")
   const [customerDni, setCustomerDni] = useState("")
+  const [customerId, setCustomerId] = useState("")
+  const [customerResults, setCustomerResults] = useState<Array<{ id: string; name: string; dni: string | null }>>([])
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false)
   const [paymentMethod, setPaymentMethod] = useState("CASH")
 
   useEffect(() => {
@@ -85,6 +88,20 @@ export default function NuevaVentaPage() {
     return list
   }, [allProducts, selectedCategory, search])
 
+  useEffect(() => {
+    if (!customerName.trim() || customerId) {
+      setCustomerResults([])
+      return
+    }
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/customers?search=${encodeURIComponent(customerName)}`)
+        if (res.ok) setCustomerResults(await res.json())
+      } catch { /* ignore */ }
+    }, 200)
+    return () => clearTimeout(t)
+  }, [customerName, customerId])
+
   const handleAdd = (product: SearchProduct) => {
     addItem({
       id: product.id,
@@ -109,6 +126,7 @@ export default function NuevaVentaPage() {
       }
       if (customerName) body.customerName = customerName
       if (customerDni) body.customerDni = customerDni
+      if (customerId) body.customerId = customerId
       const res = await fetch("/api/sales", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -125,6 +143,7 @@ export default function NuevaVentaPage() {
       clearCart()
       setCustomerName("")
       setCustomerDni("")
+      setCustomerId("")
       setConfirmOpen(false)
       router.push(`/ventas/${sale.id}/ticket`)
     } catch {
@@ -517,7 +536,7 @@ export default function NuevaVentaPage() {
 
             <div className="p-6 space-y-3">
               <div className="grid grid-cols-2 gap-3 pb-3 border-b border-border dark:border-dark-border">
-                <div>
+                <div className="relative">
                   <label className="block text-xs font-medium text-text-muted dark:text-dark-muted mb-1">
                     Cliente
                   </label>
@@ -525,9 +544,38 @@ export default function NuevaVentaPage() {
                     type="text"
                     placeholder="Nombre (opcional)"
                     value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
+                    onChange={(e) => {
+                      setCustomerName(e.target.value)
+                      setCustomerId("")
+                      setShowCustomerDropdown(true)
+                    }}
+                    onFocus={() => customerName.trim() && setShowCustomerDropdown(true)}
+                    onBlur={() => setTimeout(() => setShowCustomerDropdown(false), 200)}
                     className="w-full px-3 py-2 bg-bg-main dark:bg-dark-bg border border-border dark:border-dark-border rounded-lg text-sm text-text dark:text-dark-text placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
                   />
+                  {showCustomerDropdown && customerResults.length > 0 && (
+                    <div className="absolute z-10 top-full left-0 right-0 mt-1 bg-surface dark:bg-dark-surface border border-border dark:border-dark-border rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                      {customerResults.map((c) => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onMouseDown={() => {
+                            setCustomerId(c.id)
+                            setCustomerName(c.name)
+                            setCustomerDni(c.dni || "")
+                            setShowCustomerDropdown(false)
+                          }}
+                          className="w-full text-left px-3 py-2 text-sm text-text dark:text-dark-text hover:bg-bg-main dark:hover:bg-dark-bg transition-colors"
+                        >
+                          <span className="font-medium">{c.name}</span>
+                          {c.dni && <span className="text-text-muted dark:text-dark-muted ml-2">{c.dni}</span>}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {customerId && (
+                    <p className="mt-1 text-xs text-primary">Cliente registrado</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-text-muted dark:text-dark-muted mb-1">
