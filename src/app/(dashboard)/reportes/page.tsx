@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import toast from "react-hot-toast"
@@ -36,7 +36,6 @@ export default function ReportesPage() {
   const [days, setDays] = useState("30")
   const [userId, setUserId] = useState("")
   const [profitView, setProfitView] = useState(false)
-  const reportsRef = useRef<HTMLDivElement>(null)
 
   const handleExportCSV = () => {
     const rows: string[][] = []
@@ -68,22 +67,103 @@ export default function ReportesPage() {
   }
 
   const handleDownloadPDF = async () => {
-    if (!reportsRef.current) return
-    toast.loading("Generando PDF...")
     try {
-      const html2canvas = (await import("html2canvas")).default
       const { jsPDF } = await import("jspdf")
-      const canvas = await html2canvas(reportsRef.current, { scale: 2, backgroundColor: "#ffffff" })
-      const imgData = canvas.toDataURL("image/png")
+      const d = data!
       const pdf = new jsPDF("p", "mm", "a4")
-      const imgWidth = 190
-      const imgHeight = (canvas.height * imgWidth) / canvas.width
-      pdf.addImage(imgData, "PNG", 10, 10, imgWidth, imgHeight)
+      let y = 20
+
+      const title = (txt: string, size: number, col = "#111") => {
+        pdf.setFontSize(size)
+        pdf.setTextColor(col)
+        pdf.text(txt, 105, y, { align: "center" })
+        y += size * 0.5
+      }
+      const text = (txt: string, size = 10, col = "#333") => {
+        pdf.setFontSize(size)
+        pdf.setTextColor(col)
+        pdf.text(txt, 14, y)
+        y += size * 0.45
+      }
+      const separator = () => {
+        pdf.setDrawColor("#ddd")
+        pdf.line(14, y, 196, y)
+        y += 4
+      }
+
+      title("Reporte de Ventas", 18, "#2563eb")
+      title(`${days} días · ${d.summary.totalTransactions} transacciones`, 10, "#666")
+      y += 6
+
+      title("Resumen", 13, "#111")
+      separator()
+      const summaryRows = [
+        ["Ventas Totales", `$${d.summary.totalRevenue.toFixed(2)}`],
+        ["Ganancia Neta", `$${d.summary.totalProfit.toFixed(2)}`],
+        ["Margen Promedio", `${d.summary.averageMargin.toFixed(1)}%`],
+        ["Transacciones", String(d.summary.totalTransactions)],
+        ["Ticket Promedio", `$${d.summary.averageTicket.toFixed(2)}`],
+        ["Productos Vendidos", String(d.summary.totalSales)],
+      ]
+      summaryRows.forEach(([l, v]) => {
+        pdf.setFontSize(10)
+        pdf.setTextColor("#333")
+        pdf.text(l, 14, y)
+        pdf.setTextColor("#111")
+        pdf.text(v, 196, y, { align: "right" })
+        y += 5
+      })
+
+      y += 6
+      if (y > 250) { pdf.addPage(); y = 20 }
+
+      title("Productos Más Vendidos", 13, "#111")
+      separator()
+      pdf.setFontSize(9)
+      pdf.setTextColor("#666")
+      pdf.text("Producto", 14, y)
+      pdf.text("Cant.", 160, y, { align: "right" })
+      pdf.text("Total", 196, y, { align: "right" })
+      y += 4
+      pdf.setDrawColor("#ddd")
+      pdf.line(14, y, 196, y)
+      y += 3
+      d.topProducts.slice(0, 15).forEach((p) => {
+        if (y > 260) { pdf.addPage(); y = 20 }
+        pdf.setFontSize(9)
+        pdf.setTextColor("#111")
+        pdf.text(p.name.length > 40 ? p.name.slice(0, 37) + "..." : p.name, 14, y)
+        pdf.text(String(p.quantity), 160, y, { align: "right" })
+        pdf.text(`$${p.total.toFixed(2)}`, 196, y, { align: "right" })
+        y += 4
+      })
+
+      y += 6
+      if (y > 250) { pdf.addPage(); y = 20 }
+
+      title("Productos más Rentables", 13, "#111")
+      separator()
+      pdf.setFontSize(9)
+      pdf.setTextColor("#666")
+      pdf.text("Producto", 14, y)
+      pdf.text("Ganancia", 160, y, { align: "right" })
+      pdf.text("Margen", 196, y, { align: "right" })
+      y += 4
+      pdf.line(14, y, 196, y)
+      y += 3
+      d.topProfitProducts.slice(0, 15).forEach((p) => {
+        if (y > 260) { pdf.addPage(); y = 20 }
+        pdf.setFontSize(9)
+        pdf.setTextColor("#111")
+        pdf.text(p.name.length > 40 ? p.name.slice(0, 37) + "..." : p.name, 14, y)
+        pdf.text(`$${p.profit.toFixed(2)}`, 160, y, { align: "right" })
+        pdf.text(`${p.margin.toFixed(1)}%`, 196, y, { align: "right" })
+        y += 4
+      })
+
       pdf.save(`reporte-ventas-${days}-dias.pdf`)
-      toast.dismiss()
       toast.success("PDF descargado")
     } catch {
-      toast.dismiss()
       toast.error("Error al generar PDF")
     }
   }
@@ -153,7 +233,6 @@ export default function ReportesPage() {
         </div>
       </div>
 
-      <div ref={reportsRef} className="space-y-6">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <div className="bg-surface dark:bg-dark-surface rounded-xl border border-border dark:border-dark-border shadow-custom-sm p-5">
           <p className="text-sm text-text-muted dark:text-dark-muted">Ventas Totales</p>
@@ -292,7 +371,6 @@ export default function ReportesPage() {
           </div>
         </div>
       </div>
-    </div>
     </div>
   )
 }
