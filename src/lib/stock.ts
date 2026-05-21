@@ -1,5 +1,5 @@
 import { prisma } from "./prisma"
-import { MovementType } from "@/generated/prisma"
+import { MovementType } from "@/generated/prisma/enums"
 
 export class ConcurrencyError extends Error {
   constructor(message: string) {
