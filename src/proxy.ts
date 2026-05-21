@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { getToken } from "next-auth/jwt"
 
 const protectedPaths = [
   "/productos",
@@ -14,35 +13,15 @@ const protectedPaths = [
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
+  const cookie = request.cookies.get("authjs.session-token")?.value
 
-  if (pathname === "/login" || pathname.startsWith("/_not-found")) {
-    try {
-      const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET })
-      if (token && pathname === "/login") {
-        return NextResponse.redirect(new URL("/", request.url))
-      }
-    } catch {}
-    return NextResponse.next()
+  if (pathname === "/login" && cookie) {
+    return NextResponse.redirect(new URL("/", request.url))
   }
 
-  try {
-    const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET })
+  const isProtected = pathname === "/" || protectedPaths.some((p) => pathname.startsWith(p))
 
-    const isProtected = pathname === "/" || protectedPaths.some((p) => pathname.startsWith(p))
-
-    if (isProtected && !token) {
-      return NextResponse.redirect(new URL("/login", request.url))
-    }
-
-    if (token) {
-      if (pathname.startsWith("/usuarios") && token.role !== "ADMIN") {
-        return NextResponse.redirect(new URL("/", request.url))
-      }
-      if (pathname.startsWith("/reportes") && token.role === "EMPLEADO") {
-        return NextResponse.redirect(new URL("/", request.url))
-      }
-    }
-  } catch {
+  if (isProtected && !cookie) {
     return NextResponse.redirect(new URL("/login", request.url))
   }
 
