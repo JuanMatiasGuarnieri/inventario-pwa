@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getToken } from "next-auth/jwt"
 import { prisma } from "@/lib/prisma"
+import { Prisma } from "@/generated/prisma"
 
 export async function GET(request: NextRequest) {
   const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET })
@@ -14,51 +15,51 @@ export async function GET(request: NextRequest) {
 
   const startDate = new Date()
   startDate.setDate(startDate.getDate() - days)
-  const startDateStr = startDate.toISOString()
-  const userFilter = userId ? `AND s.user_id = '${userId}'` : ""
+
+  const userFilter = userId ? Prisma.sql`AND s.user_id = ${userId}` : Prisma.empty
 
   try {
     const [salesByDayRaw, topProductsRaw, topProfitProductsRaw, summaryRaw, categoryDistRaw, users] = await Promise.all([
-      prisma.$queryRawUnsafe(
-        `SELECT DATE(s.created_at) as date, COALESCE(SUM(s.total), 0) as total, COUNT(*)::int as count
-         FROM sales s
-         WHERE s.created_at >= '${startDateStr}' ${userFilter}
-         GROUP BY DATE(s.created_at)
-         ORDER BY date ASC`
-      ),
-      prisma.$queryRawUnsafe(
-        `SELECT si.product_id, p.name, SUM(si.quantity)::int as quantity, COALESCE(SUM(si.subtotal), 0) as total
-         FROM sale_items si
-         JOIN products p ON p.id = si.product_id
-         JOIN sales s ON s.id = si.sale_id
-         WHERE s.created_at >= '${startDateStr}' ${userFilter}
-         GROUP BY si.product_id, p.name
-         ORDER BY quantity DESC
-         LIMIT 10`
-      ),
-      prisma.$queryRawUnsafe(
-        `SELECT si.product_id, p.name,
+      prisma.$queryRaw`
+        SELECT DATE(s.created_at) as date, COALESCE(SUM(s.total), 0) as total, COUNT(*)::int as count
+        FROM sales s
+        WHERE s.created_at >= ${startDate} ${userFilter}
+        GROUP BY DATE(s.created_at)
+        ORDER BY date ASC
+      `,
+      prisma.$queryRaw`
+        SELECT si.product_id, p.name, SUM(si.quantity)::int as quantity, COALESCE(SUM(si.subtotal), 0) as total
+        FROM sale_items si
+        JOIN products p ON p.id = si.product_id
+        JOIN sales s ON s.id = si.sale_id
+        WHERE s.created_at >= ${startDate} ${userFilter}
+        GROUP BY si.product_id, p.name
+        ORDER BY quantity DESC
+        LIMIT 10
+      `,
+      prisma.$queryRaw`
+        SELECT si.product_id, p.name,
           COALESCE(SUM(si.subtotal - (p.cost * si.quantity)), 0) as profit,
           SUM(si.quantity)::int as quantity
-         FROM sale_items si
-         JOIN products p ON p.id = si.product_id
-         JOIN sales s ON s.id = si.sale_id
-         WHERE s.created_at >= '${startDateStr}' ${userFilter}
-         GROUP BY si.product_id, p.name
-         ORDER BY profit DESC
-         LIMIT 10`
-      ),
-      prisma.$queryRawUnsafe(
-        `SELECT
-           COALESCE(SUM(s.total), 0) as revenue,
-           COALESCE(SUM(p.cost * si.quantity), 0) as cost,
-           COUNT(DISTINCT s.id)::int as transactions,
-           COALESCE(SUM(si.quantity), 0)::int as total_sales
-         FROM sales s
-         JOIN sale_items si ON si.sale_id = s.id
-         JOIN products p ON p.id = si.product_id
-         WHERE s.created_at >= '${startDateStr}' ${userFilter}`
-      ),
+        FROM sale_items si
+        JOIN products p ON p.id = si.product_id
+        JOIN sales s ON s.id = si.sale_id
+        WHERE s.created_at >= ${startDate} ${userFilter}
+        GROUP BY si.product_id, p.name
+        ORDER BY profit DESC
+        LIMIT 10
+      `,
+      prisma.$queryRaw`
+        SELECT
+          COALESCE(SUM(s.total), 0) as revenue,
+          COALESCE(SUM(p.cost * si.quantity), 0) as cost,
+          COUNT(DISTINCT s.id)::int as transactions,
+          COALESCE(SUM(si.quantity), 0)::int as total_sales
+        FROM sales s
+        JOIN sale_items si ON si.sale_id = s.id
+        JOIN products p ON p.id = si.product_id
+        WHERE s.created_at >= ${startDate} ${userFilter}
+      `,
     prisma.$queryRaw`
       SELECT c.name, COUNT(p.id)::int as count
       FROM categories c
