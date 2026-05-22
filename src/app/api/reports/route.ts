@@ -171,7 +171,7 @@ export async function GET(request: NextRequest) {
     },
   })
   } catch (error: any) {
-    console.error("Reports API error:", error?.message || error)
-    return NextResponse.json({ error: "Error al generar reportes" }, { status: 500 })
+    console.error("Reports API error:", error?.message || error, error?.stack)
+    return NextResponse.json({ error: "Error interno", detail: error?.message || String(error), stack: error?.stack?.split("\n")?.slice(0, 3)?.join("; ") }, { status: 500 })
   }
 }
