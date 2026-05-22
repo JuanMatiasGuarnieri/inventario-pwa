@@ -15,6 +15,7 @@ export async function GET(
     where: { id },
     include: {
       sales: {
+        take: 20,
         include: {
           user: { select: { name: true } },
           items: {
@@ -23,6 +24,7 @@ export async function GET(
         },
         orderBy: { createdAt: "desc" },
       },
+      _count: { select: { sales: true } },
     },
   })
 
@@ -30,7 +32,16 @@ export async function GET(
     return NextResponse.json({ error: "Cliente no encontrado" }, { status: 404 })
   }
 
-  return NextResponse.json(customer)
+  const aggregation = await prisma.sale.aggregate({
+    where: { customerId: id },
+    _sum: { total: true },
+  })
+
+  return NextResponse.json({
+    ...customer,
+    totalSpent: aggregation._sum.total || 0,
+    totalSales: customer._count.sales,
+  })
 }
 
 export async function PUT(

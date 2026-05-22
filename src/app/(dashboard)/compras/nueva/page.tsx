@@ -53,9 +53,9 @@ export default function NuevaCompraPage() {
       .then((r) => r.json())
       .then(setSuppliers)
       .catch(() => {})
-    fetch("/api/products")
+    fetch("/api/products?take=200")
       .then((r) => r.json())
-      .then(setProducts)
+      .then((res) => setProducts(res.data))
       .catch(() => {})
   }, [])
 

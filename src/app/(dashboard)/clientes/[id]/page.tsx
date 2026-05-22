@@ -12,6 +12,8 @@ interface CustomerDetail {
   email: string | null
   phone: string | null
   createdAt: string
+  totalSpent: number
+  totalSales: number
   sales: Array<{
     id: string
     total: number
@@ -123,8 +125,8 @@ export default function ClienteDetailPage() {
     )
   }
 
-  const totalSpent = customer.sales.reduce((sum, s) => sum + s.total, 0)
-  const totalPurchases = customer.sales.length
+  const totalSpent = customer.totalSpent
+  const totalPurchases = customer.totalSales
 
   return (
     <div className="space-y-6">

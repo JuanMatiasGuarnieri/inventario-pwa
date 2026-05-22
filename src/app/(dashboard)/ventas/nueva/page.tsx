@@ -43,6 +43,7 @@ export default function NuevaVentaPage() {
 
   const [search, setSearch] = useState("")
   const [allProducts, setAllProducts] = useState<SearchProduct[]>([])
+  const [categories, setCategories] = useState<Array<{ id: string; name: string }>>([])
   const [selectedCategory, setSelectedCategory] = useState("")
   const [loading, setLoading] = useState(true)
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -56,20 +57,17 @@ export default function NuevaVentaPage() {
 
   useEffect(() => {
     setLoading(true)
-    fetch("/api/products")
-      .then((r) => r.json())
-      .then(setAllProducts)
-      .catch(() => toast.error("Error al cargar productos"))
+    Promise.all([
+      fetch("/api/products?take=500").then((r) => r.json()),
+      fetch("/api/categories").then((r) => r.json()),
+    ])
+      .then(([productsRes, categoriesData]) => {
+        setAllProducts(productsRes.data || productsRes)
+        setCategories(categoriesData)
+      })
+      .catch(() => toast.error("Error al cargar datos"))
       .finally(() => setLoading(false))
   }, [])
-
-  const categories = useMemo(() => {
-    const map = new Map<string, string>()
-    allProducts.forEach((p) => {
-      if (p.category) map.set(p.category.id, p.category.name)
-    })
-    return Array.from(map.entries()).map(([id, name]) => ({ id, name }))
-  }, [allProducts])
 
   const filteredProducts = useMemo(() => {
     let list = allProducts

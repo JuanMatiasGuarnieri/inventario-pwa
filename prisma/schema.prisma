@@ -201,6 +201,8 @@ model PurchaseOrderItem {
   receivedQuantity Int            @default(0)
   unitCost         Float
 
+  @@index([purchaseOrderId])
+  @@index([productId])
   @@map("purchase_order_items")
 }
 
@@ -250,5 +252,7 @@ model SaleItem {
   price     Float
   subtotal  Float
 
+  @@index([saleId])
+  @@index([productId])
   @@map("sale_items")
 }

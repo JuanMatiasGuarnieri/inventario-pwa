@@ -8,16 +8,25 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 })
   }
 
-  const orders = await prisma.purchaseOrder.findMany({
-    include: {
-      supplier: { select: { name: true } },
-      user: { select: { name: true } },
-      items: { include: { product: { select: { name: true, code: true } } } },
-    },
-    orderBy: { createdAt: "desc" },
-  })
+  const { searchParams } = new URL(request.url)
+  const take = Math.min(parseInt(searchParams.get("take") || "50"), 200)
+  const skip = parseInt(searchParams.get("skip") || "0")
 
-  return NextResponse.json(orders)
+  const [orders, total] = await Promise.all([
+    prisma.purchaseOrder.findMany({
+      take,
+      skip,
+      include: {
+        supplier: { select: { name: true } },
+        user: { select: { name: true } },
+        items: { include: { product: { select: { name: true, code: true } } } },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.purchaseOrder.count(),
+  ])
+
+  return NextResponse.json({ data: orders, total })
 }
 
 export async function POST(request: NextRequest) {

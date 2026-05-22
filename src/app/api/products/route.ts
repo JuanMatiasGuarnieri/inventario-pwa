@@ -22,13 +22,21 @@ export async function GET(request: NextRequest) {
 
   if (categoryId) where.categoryId = categoryId
 
-  const products = await prisma.product.findMany({
-    where,
-    include: { category: true, supplier: true },
-    orderBy: { name: "asc" },
-  })
+  const take = Math.min(parseInt(searchParams.get("take") || "200"), 500)
+  const skip = parseInt(searchParams.get("skip") || "0")
 
-  return NextResponse.json(products)
+  const [products, total] = await Promise.all([
+    prisma.product.findMany({
+      where,
+      take,
+      skip,
+      include: { category: true, supplier: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.product.count({ where }),
+  ])
+
+  return NextResponse.json({ data: products, total })
 }
 
 export async function POST(request: NextRequest) {

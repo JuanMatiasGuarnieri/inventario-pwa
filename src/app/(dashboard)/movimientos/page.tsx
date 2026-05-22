@@ -56,11 +56,11 @@ export default function MovimientosPage() {
   useEffect(() => {
     Promise.all([
       fetch("/api/stock").then((r) => r.json()),
-      fetch("/api/products").then((r) => r.json()),
+      fetch("/api/products?take=200").then((r) => r.json()),
     ])
-      .then(([movementsData, productsData]) => {
+      .then(([movementsData, productsRes]) => {
         setMovements(movementsData)
-        setProducts(productsData)
+        setProducts(productsRes.data || productsRes)
       })
       .catch(() => {})
       .finally(() => setLoading(false))
@@ -104,8 +104,8 @@ export default function MovimientosPage() {
       closeModal()
       const movementsData = await fetch("/api/stock").then((r) => r.json())
       setMovements(movementsData)
-      const productsData = await fetch("/api/products").then((r) => r.json())
-      setProducts(productsData)
+      const productsRes = await fetch("/api/products?take=200").then((r) => r.json())
+      setProducts(productsRes.data || productsRes)
     } catch {
       alert("Error al ajustar stock")
     } finally {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getToken } from "next-auth/jwt"
 import { prisma } from "@/lib/prisma"
+import { Prisma } from "@/generated/prisma"
 
 export async function GET(request: NextRequest) {
   const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET })
@@ -15,25 +16,56 @@ export async function GET(request: NextRequest) {
   const startDate = new Date()
   startDate.setDate(startDate.getDate() - days)
 
-  const where: any = { createdAt: { gte: startDate } }
-  if (userId) where.userId = userId
+  const dateStr = startDate.toISOString()
 
-  const [sales, products, categories, users] = await Promise.all([
-    prisma.sale.findMany({
-      where,
-      include: {
-        items: { include: { product: { select: { name: true, categoryId: true, cost: true } } } },
-      },
-      orderBy: { createdAt: "asc" },
-    }),
-    prisma.product.findMany({
-      where: { active: true },
-      select: { id: true, name: true, categoryId: true },
-    }),
-    prisma.category.findMany({
-      where: { active: true },
-      select: { id: true, name: true },
-    }),
+  const [salesByDayRaw, topProductsRaw, topProfitProductsRaw, summaryRaw, categoryDistRaw, users] = await Promise.all([
+    prisma.$queryRaw`
+      SELECT DATE(s.created_at) as date, COALESCE(SUM(s.total), 0) as total, COUNT(*)::int as count
+      FROM sales s
+      WHERE s.created_at >= ${startDate}::timestamptz ${userId ? Prisma.sql`AND s.user_id = ${userId}` : Prisma.empty}
+      GROUP BY DATE(s.created_at)
+      ORDER BY date ASC
+    `,
+    prisma.$queryRaw`
+      SELECT si.product_id, p.name, SUM(si.quantity)::int as quantity, COALESCE(SUM(si.subtotal), 0) as total
+      FROM sale_items si
+      JOIN products p ON p.id = si.product_id
+      JOIN sales s ON s.id = si.sale_id
+      WHERE s.created_at >= ${startDate}::timestamptz ${userId ? Prisma.sql`AND s.user_id = ${userId}` : Prisma.empty}
+      GROUP BY si.product_id, p.name
+      ORDER BY quantity DESC
+      LIMIT 10
+    `,
+    prisma.$queryRaw`
+      SELECT si.product_id, p.name,
+        COALESCE(SUM(si.subtotal - (p.cost * si.quantity)), 0) as profit,
+        SUM(si.quantity)::int as quantity
+      FROM sale_items si
+      JOIN products p ON p.id = si.product_id
+      JOIN sales s ON s.id = si.sale_id
+      WHERE s.created_at >= ${startDate}::timestamptz ${userId ? Prisma.sql`AND s.user_id = ${userId}` : Prisma.empty}
+      GROUP BY si.product_id, p.name
+      ORDER BY profit DESC
+      LIMIT 10
+    `,
+    prisma.$queryRaw`
+      SELECT
+        COALESCE(SUM(s.total), 0) as revenue,
+        COALESCE(SUM(p.cost * si.quantity), 0) as cost,
+        COUNT(DISTINCT s.id)::int as transactions,
+        COALESCE(SUM(si.quantity), 0)::int as total_sales
+      FROM sales s
+      JOIN sale_items si ON si.sale_id = s.id
+      JOIN products p ON p.id = si.product_id
+      WHERE s.created_at >= ${startDate}::timestamptz ${userId ? Prisma.sql`AND s.user_id = ${userId}` : Prisma.empty}
+    `,
+    prisma.$queryRaw`
+      SELECT c.name, COUNT(p.id)::int as count
+      FROM categories c
+      JOIN products p ON p.category_id = c.id
+      WHERE p.active = true
+      GROUP BY c.id, c.name
+    `,
     prisma.user.findMany({
       where: { active: true },
       select: { id: true, name: true },
@@ -41,74 +73,40 @@ export async function GET(request: NextRequest) {
     }),
   ])
 
-  const salesByDayMap: Record<string, { total: number; count: number }> = {}
-  const productSalesMap: Record<string, { name: string; quantity: number; total: number }> = {}
-  const productProfitMap: Record<string, { name: string; profit: number; margin: number; quantity: number }> = {}
-  let totalCost = 0
-  let totalRevenue = 0
+  const salesByDay: Array<{ date: string; total: number; count: number }> = (salesByDayRaw as any[]).map((d: any) => ({
+    date: new Date(d.date).toISOString().split("T")[0],
+    total: Number(d.total),
+    count: Number(d.count),
+  }))
 
-  for (const sale of sales) {
-    const dateKey = sale.createdAt.toISOString().split("T")[0]
-    if (!salesByDayMap[dateKey]) salesByDayMap[dateKey] = { total: 0, count: 0 }
-    salesByDayMap[dateKey].total += sale.total
-    salesByDayMap[dateKey].count += 1
+  const topProducts: Array<{ name: string; total: number; quantity: number }> = (topProductsRaw as any[]).map((p: any) => ({
+    name: p.name,
+    total: Number(p.total),
+    quantity: Number(p.quantity),
+  }))
 
-    for (const item of sale.items) {
-      const cost = item.product.cost || 0
-      const costTotal = cost * item.quantity
-      const profit = item.subtotal - costTotal
-
-      totalRevenue += item.subtotal
-      totalCost += costTotal
-
-      if (!productSalesMap[item.productId]) {
-        productSalesMap[item.productId] = {
-          name: item.product.name,
-          quantity: 0,
-          total: 0,
-        }
-      }
-      productSalesMap[item.productId].quantity += item.quantity
-      productSalesMap[item.productId].total += item.subtotal
-
-      if (!productProfitMap[item.productId]) {
-        productProfitMap[item.productId] = { name: item.product.name, profit: 0, margin: 0, quantity: 0 }
-      }
-      productProfitMap[item.productId].profit += profit
-      productProfitMap[item.productId].quantity += item.quantity
+  const topProfitProducts: Array<{ name: string; profit: number; margin: number; quantity: number }> = (topProfitProductsRaw as any[]).map((p: any) => {
+    const profit = Number(p.profit)
+    const salesTotal = topProducts.find((tp) => tp.name === p.name)?.total || 0
+    return {
+      name: p.name,
+      profit,
+      margin: salesTotal > 0 ? (profit / salesTotal) * 100 : 0,
+      quantity: Number(p.quantity),
     }
-  }
+  })
 
-  for (const id of Object.keys(productProfitMap)) {
-    const p = productProfitMap[id]
-    p.margin = p.profit > 0 && productSalesMap[id]?.total ? (p.profit / productSalesMap[id].total) * 100 : 0
-  }
+  const s = (summaryRaw as any[])[0] || {}
+  const revenue = Number(s.revenue || 0)
+  const cost = Number(s.cost || 0)
+  const transactions = Number(s.transactions || 0)
+  const totalSalesQty = Number(s.total_sales || 0)
+  const totalProfit = revenue - cost
 
-  const salesByDay = Object.entries(salesByDayMap)
-    .map(([date, data]) => ({ date, ...data }))
-    .sort((a, b) => a.date.localeCompare(b.date))
-
-  const topProducts = Object.values(productSalesMap)
-    .sort((a, b) => b.quantity - a.quantity)
-    .slice(0, 10)
-
-  const categoryCount: Record<string, number> = {}
-  for (const product of products) {
-    if (product.categoryId) {
-      categoryCount[product.categoryId] = (categoryCount[product.categoryId] || 0) + 1
-    }
-  }
-
-  const categoryDistribution = categories
-    .filter((c) => categoryCount[c.id])
-    .map((c) => ({ name: c.name, count: categoryCount[c.id] || 0 }))
-
-  const topProfitProducts = Object.values(productProfitMap)
-    .sort((a, b) => b.profit - a.profit)
-    .slice(0, 10)
-
-  const totalProfit = totalRevenue - totalCost
-  const totalTransactions = sales.length
+  const categoryDistribution = (categoryDistRaw as any[]).map((c: any) => ({
+    name: c.name,
+    count: Number(c.count),
+  }))
 
   return NextResponse.json({
     users,
@@ -117,13 +115,13 @@ export async function GET(request: NextRequest) {
     topProfitProducts,
     categoryDistribution,
     summary: {
-      totalSales: topProducts.reduce((sum, p) => sum + p.quantity, 0),
-      totalRevenue,
-      totalCost,
+      totalSales: totalSalesQty,
+      totalRevenue: revenue,
+      totalCost: cost,
       totalProfit,
-      totalTransactions,
-      averageTicket: totalTransactions > 0 ? totalRevenue / totalTransactions : 0,
-      averageMargin: totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0,
+      totalTransactions: transactions,
+      averageTicket: transactions > 0 ? revenue / transactions : 0,
+      averageMargin: revenue > 0 ? (totalProfit / revenue) * 100 : 0,
     },
   })
 }

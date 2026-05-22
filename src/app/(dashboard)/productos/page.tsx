@@ -100,9 +100,9 @@ export default function ProductosPage() {
   }, [products, search, categoryFilter])
 
   const fetchProducts = () => {
-    fetch("/api/products")
+    fetch("/api/products?take=200")
       .then((r) => r.json())
-      .then(setProducts)
+      .then((res) => setProducts(res.data))
       .catch(() => {})
       .finally(() => setLoading(false))
   }

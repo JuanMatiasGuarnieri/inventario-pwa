@@ -38,7 +38,10 @@ export default function ComprasPage() {
   const router = useRouter()
   const { data: session } = useSession()
   const [orders, setOrders] = useState<PurchaseOrder[]>([])
+  const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [page, setPage] = useState(0)
+  const perPage = 50
 
   useEffect(() => {
     if (session?.user?.role === "EMPLEADO") {
@@ -48,15 +51,18 @@ export default function ComprasPage() {
   }, [session, router])
 
   useEffect(() => {
-    fetch("/api/purchase-orders")
+    fetch(`/api/purchase-orders?take=${perPage}&skip=${page * perPage}`)
       .then(async (r) => {
         if (!r.ok) throw new Error()
         return r.json()
       })
-      .then(setOrders)
+      .then((res) => {
+        setOrders(res.data)
+        setTotal(res.total)
+      })
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [])
+  }, [page])
 
   const totalItems = (order: PurchaseOrder) =>
     order.items.reduce((s, i) => s + i.quantity, 0)
@@ -122,6 +128,28 @@ export default function ComprasPage() {
           </table>
         </div>
       )}
+
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-text-muted dark:text-dark-muted">
+          Página {page + 1} de {Math.max(1, Math.ceil(total / perPage))}
+        </p>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setPage(Math.max(0, page - 1))}
+            disabled={page === 0}
+            className="px-3 py-1.5 text-xs font-medium text-text dark:text-dark-text bg-surface dark:bg-dark-surface border border-border dark:border-dark-border rounded-lg hover:bg-bg-main disabled:opacity-40 transition-colors"
+          >
+            Anterior
+          </button>
+          <button
+            onClick={() => setPage(page + 1)}
+            disabled={(page + 1) * perPage >= total}
+            className="px-3 py-1.5 text-xs font-medium text-text dark:text-dark-text bg-surface dark:bg-dark-surface border border-border dark:border-dark-border rounded-lg hover:bg-bg-main disabled:opacity-40 transition-colors"
+          >
+            Siguiente
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

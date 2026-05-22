@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useMemo } from "react"
+import { useCallback, useEffect, useState, useMemo } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import toast from "react-hot-toast"
@@ -28,19 +28,33 @@ export default function HistorialVentasPage() {
   const { data: session } = useSession()
   const router = useRouter()
   const [sales, setSales] = useState<Sale[]>([])
+  const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
+  const [page, setPage] = useState(0)
+  const perPage = 50
 
   const role = session?.user?.role
 
-  useEffect(() => {
-    fetch("/api/sales")
+  const fetchSales = useCallback(() => {
+    const params = new URLSearchParams()
+    if (startDate) params.set("startDate", startDate)
+    if (endDate) params.set("endDate", endDate)
+    params.set("skip", String(page * perPage))
+    params.set("take", String(perPage))
+    setLoading(true)
+    fetch(`/api/sales?${params.toString()}`)
       .then((r) => r.json())
-      .then(setSales)
+      .then((res) => {
+        setSales(res.data)
+        setTotal(res.total)
+      })
       .catch(() => toast.error("Error al cargar ventas"))
       .finally(() => setLoading(false))
-  }, [])
+  }, [startDate, endDate, page])
+
+  useEffect(() => { fetchSales() }, [fetchSales])
 
   const filtered = useMemo(() => {
     if (!startDate && !endDate) return sales
@@ -62,15 +76,8 @@ export default function HistorialVentasPage() {
   )
 
   const handleSearch = () => {
-    const params = new URLSearchParams()
-    if (startDate) params.set("startDate", startDate)
-    if (endDate) params.set("endDate", endDate)
-    setLoading(true)
-    fetch(`/api/sales?${params.toString()}`)
-      .then((r) => r.json())
-      .then(setSales)
-      .catch(() => toast.error("Error al filtrar ventas"))
-      .finally(() => setLoading(false))
+    setPage(0)
+    fetchSales()
   }
 
   const shortId = (id: string) => id.split("-")[0].toUpperCase()
@@ -126,11 +133,7 @@ export default function HistorialVentasPage() {
               onClick={() => {
                 setStartDate("")
                 setEndDate("")
-                setLoading(true)
-                fetch("/api/sales")
-                  .then((r) => r.json())
-                  .then(setSales)
-                  .finally(() => setLoading(false))
+                setPage(0)
               }}
               className="px-4 py-2.5 text-sm font-medium text-text dark:text-dark-text bg-bg-main dark:bg-dark-bg border border-border dark:border-dark-border rounded-xl hover:bg-surface dark:hover:bg-dark-surface transition-colors"
             >
@@ -143,7 +146,7 @@ export default function HistorialVentasPage() {
       <div className="bg-surface dark:bg-dark-surface rounded-xl border border-border dark:border-dark-border shadow-custom-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-border dark:border-dark-border">
           <p className="text-sm text-text-muted dark:text-dark-muted">
-            {filtered.length} venta(s) · Total:{" "}
+            {total} venta(s) · Mostrando {sales.length} · Total:{" "}
             <span className="font-semibold text-text dark:text-dark-text">
               ${totalSum.toFixed(2)}
             </span>
@@ -264,6 +267,28 @@ export default function HistorialVentasPage() {
               )}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-text-muted dark:text-dark-muted">
+          Página {page + 1} de {Math.max(1, Math.ceil(total / perPage))}
+        </p>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setPage(Math.max(0, page - 1))}
+            disabled={page === 0}
+            className="px-3 py-1.5 text-xs font-medium text-text dark:text-dark-text bg-surface dark:bg-dark-surface border border-border dark:border-dark-border rounded-lg hover:bg-bg-main disabled:opacity-40 transition-colors"
+          >
+            Anterior
+          </button>
+          <button
+            onClick={() => setPage(page + 1)}
+            disabled={(page + 1) * perPage >= total}
+            className="px-3 py-1.5 text-xs font-medium text-text dark:text-dark-text bg-surface dark:bg-dark-surface border border-border dark:border-dark-border rounded-lg hover:bg-bg-main disabled:opacity-40 transition-colors"
+          >
+            Siguiente
+          </button>
         </div>
       </div>
     </div>

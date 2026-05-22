@@ -20,16 +20,24 @@ export async function GET(request: NextRequest) {
     where.createdAt = { gte: new Date(startDate), lte: new Date(endDate) }
   }
 
-  const sales = await prisma.sale.findMany({
-    where,
-    include: {
-      user: { select: { name: true, email: true } },
-      items: { include: { product: { select: { name: true, code: true } } } },
-    },
-    orderBy: { createdAt: "desc" },
-  })
+  const take = Math.min(parseInt(searchParams.get("take") || "50"), 200)
+  const skip = parseInt(searchParams.get("skip") || "0")
 
-  return NextResponse.json(sales)
+  const [sales, total] = await Promise.all([
+    prisma.sale.findMany({
+      where,
+      take,
+      skip,
+      include: {
+        user: { select: { name: true, email: true } },
+        items: { include: { product: { select: { name: true, code: true } } } },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.sale.count({ where }),
+  ])
+
+  return NextResponse.json({ data: sales, total })
 }
 
 export async function POST(request: NextRequest) {
