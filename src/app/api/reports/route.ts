@@ -14,103 +14,102 @@ export async function GET(request: NextRequest) {
 
   const startDate = new Date()
   startDate.setDate(startDate.getDate() - days)
-  const startDateStr = startDate.toISOString()
 
   try {
     const baseQueries = userId
       ? [
           prisma.$queryRaw`
-            SELECT DATE(s.created_at) as date, COALESCE(SUM(s.total), 0) as total, COUNT(*)::int as count
+            SELECT DATE(s."createdAt") as date, COALESCE(SUM(s."total"), 0) as total, COUNT(*)::int as count
             FROM sales s
-            WHERE s.created_at >= ${startDateStr} AND s.user_id = ${userId}
-            GROUP BY DATE(s.created_at)
+            WHERE s."createdAt" >= ${startDate} AND s."userId" = ${userId}
+            GROUP BY DATE(s."createdAt")
             ORDER BY date ASC
           `,
           prisma.$queryRaw`
-            SELECT si.product_id, p.name, SUM(si.quantity)::int as quantity, COALESCE(SUM(si.subtotal), 0) as total
+            SELECT si."productId", p."name", SUM(si."quantity")::int as quantity, COALESCE(SUM(si."subtotal"), 0) as total
             FROM sale_items si
-            JOIN products p ON p.id = si.product_id
-            JOIN sales s ON s.id = si.sale_id
-            WHERE s.created_at >= ${startDateStr} AND s.user_id = ${userId}
-            GROUP BY si.product_id, p.name
+            JOIN products p ON p."id" = si."productId"
+            JOIN sales s ON s."id" = si."saleId"
+            WHERE s."createdAt" >= ${startDate} AND s."userId" = ${userId}
+            GROUP BY si."productId", p."name"
             ORDER BY quantity DESC
             LIMIT 10
           `,
           prisma.$queryRaw`
-            SELECT si.product_id, p.name,
-              COALESCE(SUM(si.subtotal - (p.cost * si.quantity)), 0) as profit,
-              SUM(si.quantity)::int as quantity
+            SELECT si."productId", p."name",
+              COALESCE(SUM(si."subtotal" - (p."cost" * si."quantity")), 0) as profit,
+              SUM(si."quantity")::int as quantity
             FROM sale_items si
-            JOIN products p ON p.id = si.product_id
-            JOIN sales s ON s.id = si.sale_id
-            WHERE s.created_at >= ${startDateStr} AND s.user_id = ${userId}
-            GROUP BY si.product_id, p.name
+            JOIN products p ON p."id" = si."productId"
+            JOIN sales s ON s."id" = si."saleId"
+            WHERE s."createdAt" >= ${startDate} AND s."userId" = ${userId}
+            GROUP BY si."productId", p."name"
             ORDER BY profit DESC
             LIMIT 10
           `,
           prisma.$queryRaw`
             SELECT
-              COALESCE(SUM(s.total), 0) as revenue,
-              COALESCE(SUM(p.cost * si.quantity), 0) as cost,
-              COUNT(DISTINCT s.id)::int as transactions,
-              COALESCE(SUM(si.quantity), 0)::int as total_sales
+              COALESCE(SUM(s."total"), 0) as revenue,
+              COALESCE(SUM(p."cost" * si."quantity"), 0) as cost,
+              COUNT(DISTINCT s."id")::int as transactions,
+              COALESCE(SUM(si."quantity"), 0)::int as total_sales
             FROM sales s
-            JOIN sale_items si ON si.sale_id = s.id
-            JOIN products p ON p.id = si.product_id
-            WHERE s.created_at >= ${startDateStr} AND s.user_id = ${userId}
+            JOIN sale_items si ON si."saleId" = s."id"
+            JOIN products p ON p."id" = si."productId"
+            WHERE s."createdAt" >= ${startDate} AND s."userId" = ${userId}
           `,
         ]
       : [
           prisma.$queryRaw`
-            SELECT DATE(s.created_at) as date, COALESCE(SUM(s.total), 0) as total, COUNT(*)::int as count
+            SELECT DATE(s."createdAt") as date, COALESCE(SUM(s."total"), 0) as total, COUNT(*)::int as count
             FROM sales s
-            WHERE s.created_at >= ${startDateStr}
-            GROUP BY DATE(s.created_at)
+            WHERE s."createdAt" >= ${startDate}
+            GROUP BY DATE(s."createdAt")
             ORDER BY date ASC
           `,
           prisma.$queryRaw`
-            SELECT si.product_id, p.name, SUM(si.quantity)::int as quantity, COALESCE(SUM(si.subtotal), 0) as total
+            SELECT si."productId", p."name", SUM(si."quantity")::int as quantity, COALESCE(SUM(si."subtotal"), 0) as total
             FROM sale_items si
-            JOIN products p ON p.id = si.product_id
-            JOIN sales s ON s.id = si.sale_id
-            WHERE s.created_at >= ${startDateStr}
-            GROUP BY si.product_id, p.name
+            JOIN products p ON p."id" = si."productId"
+            JOIN sales s ON s."id" = si."saleId"
+            WHERE s."createdAt" >= ${startDate}
+            GROUP BY si."productId", p."name"
             ORDER BY quantity DESC
             LIMIT 10
           `,
           prisma.$queryRaw`
-            SELECT si.product_id, p.name,
-              COALESCE(SUM(si.subtotal - (p.cost * si.quantity)), 0) as profit,
-              SUM(si.quantity)::int as quantity
+            SELECT si."productId", p."name",
+              COALESCE(SUM(si."subtotal" - (p."cost" * si."quantity")), 0) as profit,
+              SUM(si."quantity")::int as quantity
             FROM sale_items si
-            JOIN products p ON p.id = si.product_id
-            JOIN sales s ON s.id = si.sale_id
-            WHERE s.created_at >= ${startDateStr}
-            GROUP BY si.product_id, p.name
+            JOIN products p ON p."id" = si."productId"
+            JOIN sales s ON s."id" = si."saleId"
+            WHERE s."createdAt" >= ${startDate}
+            GROUP BY si."productId", p."name"
             ORDER BY profit DESC
             LIMIT 10
           `,
           prisma.$queryRaw`
             SELECT
-              COALESCE(SUM(s.total), 0) as revenue,
-              COALESCE(SUM(p.cost * si.quantity), 0) as cost,
-              COUNT(DISTINCT s.id)::int as transactions,
-              COALESCE(SUM(si.quantity), 0)::int as total_sales
+              COALESCE(SUM(s."total"), 0) as revenue,
+              COALESCE(SUM(p."cost" * si."quantity"), 0) as cost,
+              COUNT(DISTINCT s."id")::int as transactions,
+              COALESCE(SUM(si."quantity"), 0)::int as total_sales
             FROM sales s
-            JOIN sale_items si ON si.sale_id = s.id
-            JOIN products p ON p.id = si.product_id
-            WHERE s.created_at >= ${startDateStr}
+            JOIN sale_items si ON si."saleId" = s."id"
+            JOIN products p ON p."id" = si."productId"
+            WHERE s."createdAt" >= ${startDate}
           `,
         ]
 
     const [salesByDayRaw, topProductsRaw, topProfitProductsRaw, summaryRaw, categoryDistRaw, users] = await Promise.all([
       ...baseQueries,
       prisma.$queryRaw`
-        SELECT c.name, COUNT(p.id)::int as count
+        SELECT c."name", COUNT(p."id")::int as count
         FROM categories c
-        JOIN products p ON p.category_id = c.id
-        WHERE p.active = true
-        GROUP BY c.id, c.name
+        JOIN products p ON p."categoryId" = c."id"
+        WHERE p."active" = true
+        GROUP BY c."id", c."name"
       `,
       prisma.user.findMany({
         where: { active: true },
@@ -171,7 +170,7 @@ export async function GET(request: NextRequest) {
     },
   })
   } catch (error: any) {
-    console.error("Reports API error:", error?.message || error, error?.stack)
-    return NextResponse.json({ error: "Error interno", detail: error?.message || String(error), stack: error?.stack?.split("\n")?.slice(0, 3)?.join("; ") }, { status: 500 })
+    console.error("Reports API error:", error?.message || error)
+    return NextResponse.json({ error: "Error al generar reportes" }, { status: 500 })
   }
 }
