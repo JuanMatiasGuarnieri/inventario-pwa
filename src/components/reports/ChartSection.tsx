@@ -23,8 +23,8 @@ export default function ChartSection({ data, profitView, setProfitView }: {
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <div className="bg-surface dark:bg-dark-surface rounded-xl border border-border dark:border-dark-border shadow-custom-sm p-5">
         <h3 className="text-lg font-semibold text-text dark:text-dark-text mb-4">Ventas por Día</h3>
-        <div className="h-72 w-full min-w-0">
-          <ResponsiveContainer width="100%" height="100%">
+        <div className="h-72 w-full" style={{ minHeight: "288px" }}>
+          <ResponsiveContainer width="100%" height={288}>
             <BarChart data={data.salesByDay}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
               <XAxis dataKey="date" tick={{ fontSize: 12 }} stroke="#64748b" />
@@ -70,8 +70,8 @@ export default function ChartSection({ data, profitView, setProfitView }: {
             </button>
           </div>
         </div>
-        <div className="h-72 w-full min-w-0">
-          <ResponsiveContainer width="100%" height="100%">
+        <div className="h-72 w-full" style={{ minHeight: "288px" }}>
+          <ResponsiveContainer width="100%" height={288}>
             <BarChart
               data={(profitView ? data.topProfitProducts.slice(0, 10) : data.topProducts.slice(0, 10)) as any[]}
               layout="vertical"
@@ -100,8 +100,8 @@ export default function ChartSection({ data, profitView, setProfitView }: {
 
       <div className="bg-surface dark:bg-dark-surface rounded-xl border border-border dark:border-dark-border shadow-custom-sm p-5">
         <h3 className="text-lg font-semibold text-text dark:text-dark-text mb-4">Distribución por Categoría</h3>
-        <div className="h-72 w-full min-w-0">
-          <ResponsiveContainer width="100%" height="100%">
+        <div className="h-72 w-full" style={{ minHeight: "288px" }}>
+          <ResponsiveContainer width="100%" height={288}>
             <PieChart>
               <Pie
                 data={data.categoryDistribution}
