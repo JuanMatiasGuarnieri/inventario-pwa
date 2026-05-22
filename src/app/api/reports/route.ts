@@ -125,7 +125,8 @@ export async function GET(request: NextRequest) {
     },
   })
   } catch (error: any) {
-    console.error("Reports API error:", error?.message || error)
-    return NextResponse.json({ error: "Error al generar reportes" }, { status: 500 })
+    console.error("Reports API error:", error?.message || error, error?.stack)
+    const msg = error?.message || String(error)
+    return NextResponse.json({ error: "Error al generar reportes", detail: msg }, { status: 500 })
   }
 }
